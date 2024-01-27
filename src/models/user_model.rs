@@ -1,7 +1,8 @@
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 
 
-
+#[derive(Debug, Deserialize , Serialize)]
 pub struct UserModel {
 id: String,
 password: String,
