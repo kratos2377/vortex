@@ -12,7 +12,3 @@ async fn main() {
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
 }
-
-async fn handler() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
-}
