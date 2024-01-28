@@ -1,1 +1,2 @@
-pub mod user_model;
+pub mod users;
+pub mod users_friends;

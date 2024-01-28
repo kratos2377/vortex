@@ -9,6 +9,9 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
 	LoginFail,
 	RegistrationFail,
+	MissingParamsError,
+	EntityNotFound,
+	PasswordIncorrect,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -44,6 +47,16 @@ impl Error {
 		#[allow(unreachable_patterns)]
 		match self {
 			Self::LoginFail => (StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL),
+			Self::RegistrationFail => (StatusCode::FORBIDDEN, ClientError::REGISTRATION_FAIL),
+
+			// Missing Params Error
+			Self::MissingParamsError => (StatusCode::BAD_REQUEST, ClientError::MISSING_PARAMS_ERROR),
+
+			//Entity Not Found
+			Self::EntityNotFound => (StatusCode::BAD_REQUEST, ClientError::ENTITY_NOT_FOUND),
+
+			//Password Incorrect
+			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
 
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
@@ -70,6 +83,10 @@ impl Error {
 #[allow(non_camel_case_types)]
 pub enum ClientError {
 	LOGIN_FAIL,
+	REGISTRATION_FAIL,
+	MISSING_PARAMS_ERROR,
+	ENTITY_NOT_FOUND,
+	PASSWORD_INCORRECT,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,

@@ -8,7 +8,7 @@ use axum::response::Response;
 use tower_cookies::{Cookie, Cookies};
 use lazy_regex::regex_captures;
 
-const AUTH_TOKEN: &str = "auth-token";
+pub const AUTH_TOKEN: &str = "auth-token";
 
 
 pub async fn middleware_require_auth(
