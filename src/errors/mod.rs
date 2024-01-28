@@ -12,6 +12,10 @@ pub enum Error {
 	MissingParamsError,
 	EntityNotFound,
 	PasswordIncorrect,
+	UsernameAlreadyExists,
+	EmailAlreadyInUse,
+	PasswordLength,
+	RegistrationPayloadValidationError,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -58,6 +62,15 @@ impl Error {
 			//Password Incorrect
 			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
 
+			//Registration Error
+			Self::UsernameAlreadyExists => (StatusCode::BAD_REQUEST , ClientError::USERNAME_ALREADY_EXISTS),
+			Self::EmailAlreadyInUse => (StatusCode::BAD_REQUEST, ClientError::EMAIL_IN_USE),
+
+			// Validation Error
+			Self::PasswordLength => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_LENGTH_SMALL),
+			Self::RegistrationPayloadValidationError => (StatusCode::BAD_REQUEST, ClientError::REGISTRATION_PAYLOAD_VALIDATION_ERROR),
+
+
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -87,6 +100,10 @@ pub enum ClientError {
 	MISSING_PARAMS_ERROR,
 	ENTITY_NOT_FOUND,
 	PASSWORD_INCORRECT,
+	USERNAME_ALREADY_EXISTS,
+	EMAIL_IN_USE,
+	PASSWORD_LENGTH_SMALL,
+	REGISTRATION_PAYLOAD_VALIDATION_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,

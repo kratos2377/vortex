@@ -1,7 +1,7 @@
 use sea_orm::{entity::prelude::*, DeleteMany};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
+use chrono::NaiveDateTime;
 
 #[derive(Clone, Debug, Deserialize , Serialize, DeriveEntityModel)]
 #[sea_orm(table_name = "users")]
@@ -13,13 +13,12 @@ pub struct Model {
     pub username: String,
     #[sea_orm(unique)]
     pub email: String,
-    first_name: String,
-    last_name: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub verified: bool,
     score: u64,
-    created_at: Option<chrono::DateTime<chrono::Utc>>,
-    updated_at:  Option<chrono::DateTime<chrono::Utc>>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub token: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 
