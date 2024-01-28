@@ -13,7 +13,7 @@ pub mod controllers;
 pub mod routes;
 pub mod models;
 pub mod state;
-
+pub mod constants;
 
 #[tokio::main]
 async fn main() {
@@ -21,6 +21,8 @@ async fn main() {
 
     //Connect with database
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let from_email = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let smtp_key = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let connection = match Database::connect(database_url.to_string()).await {
         Ok(connection) => connection,
         Err(e) => panic!("{:?}",e)
@@ -28,7 +30,7 @@ async fn main() {
 
     
   //  Migrator::up(&conn, None).await.unwrap();
-    let state = AppDBState {conn: connection};
+    let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key };
     // build our application with a route
     let user_routes = routes::user_routes::create_user_routes() ;
  //   let game_routes = ;

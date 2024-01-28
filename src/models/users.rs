@@ -16,7 +16,7 @@ pub struct Model {
     pub first_name: String,
     pub last_name: String,
     pub verified: bool,
-    score: u64,
+    pub score: u64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -38,7 +38,7 @@ impl Related<super::users_friends::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
-    pub fn find_by_id(id: i32) -> Select<Entity> {
+    pub fn find_by_id(id: &str) -> Select<Entity> {
         Self::find().filter(Column::Id.eq(id))
     }
 

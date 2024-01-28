@@ -1,3 +1,4 @@
+use crate::constants::SMTP_HOST;
 use crate::errors::Error;
 use crate::models;
 use crate::errors;
@@ -11,8 +12,10 @@ use lazy_regex::Regex;
 use models::users::{self , Entity as Users};
 use errors::Result;
 use sea_orm::ActiveModelTrait;
-use sea_orm::ActiveValue;
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::{Message, SmtpTransport, Transport};
 use sea_orm::Set;
+use sea_orm::TryIntoModel;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
@@ -35,6 +38,18 @@ pub struct RegistrationPayload {
     email: String,
 	username: String,
 	password: String,
+}
+
+#[derive( Clone, Debug, Deserialize)]
+pub struct VerifyUserPayload {
+    id: String
+}
+
+
+#[derive( Clone, Debug, Deserialize)]
+pub struct SendEmailPayload {
+    id: String,
+    to_email: String,
 }
 
 
@@ -141,20 +156,21 @@ pub async fn register_user(
      };
 
      let _result = new_user.save(&state.conn).await.unwrap();
-     // figure out a way to serialize Active Model or send data 
+     let recieved_user = _result.try_into_model().unwrap();
+
      let body = Json(json!({
 		"result": {
 			"success": true
 		},
-        // "user": ResponseUser {
-        //     id: user_id,
-        //     first_name: payload.first_name,
-        //     last_name: payload.last_name,
-        //     username: payload.username,
-        //     score: 0,
-        //     verified: false,
-        //     email: payload.email
-        // }
+        "user": ResponseUser {
+            id: recieved_user.id,
+            first_name: recieved_user.first_name,
+            last_name: recieved_user.last_name,
+            username: recieved_user.username,
+            score: recieved_user.score,
+            verified: recieved_user.verified,
+            email: recieved_user.email
+        }
 
 	}));
 
@@ -162,12 +178,76 @@ pub async fn register_user(
      Ok(body)
 }
 
-pub async fn send_email() -> Result<Json<Value>> {
-    todo!()
+pub async fn send_email(
+    state: State<AppDBState>,
+	Json(payload): Json<SendEmailPayload>,
+) -> Result<Json<Value>> {
+    let email: Message = Message::builder()
+    .from(state.from_email.parse().unwrap())
+    .to(payload.to_email.parse().unwrap())
+    .subject("Your subject")
+    .body("Your body".to_string())
+    .unwrap();
+
+let creds: Credentials = Credentials::new(state.from_email.to_string(), state.smtp_key.to_string());
+
+// Open a remote connection to gmail
+let mailer: SmtpTransport = SmtpTransport::relay(SMTP_HOST)
+    .unwrap()
+    .credentials(creds)
+    .build();
+
+// Send the email
+match mailer.send(&email) {
+    Ok(_) => {
+        let body = Json(json!({
+            "result": {
+                "success": true
+            },
+    
+        }));
+
+        Ok(body)
+    
+    },
+    Err(e) => Err(Error::SendEmailError),
+}
 }
 
-pub async fn verify_user() -> Result<Json<Value>> {
-todo!()
+pub async fn verify_user(
+    state: State<AppDBState>,
+	Json(payload): Json<VerifyUserPayload>,
+) -> Result<Json<Value>> {
+    let user = Users::find_by_id(&payload.id).one(&state.conn).await.unwrap();
+     let mut user_recieved = if let Some(user) = user {
+        user
+     } else {
+        return Err(Error::EntityNotFound)
+    };
+
+    user_recieved.verified = true;
+
+    let user_active_model = users::ActiveModel {
+        id: Set(user_recieved.id),
+        username: Set(user_recieved.username),
+        first_name: Set(user_recieved.first_name),
+        last_name: Set(user_recieved.last_name),
+        password: Set(user_recieved.password),
+        created_at: Set(user_recieved.created_at),
+        updated_at: Set(user_recieved.updated_at),
+        score: Set(user_recieved.score),
+        email: Set(user_recieved.email),
+        verified: Set(user_recieved.verified),
+    };
+
+    user_active_model.save(&state.conn).await.unwrap();
+    let body = Json(json!({
+		"result": {
+			"success": true
+		},
+   	}));
+
+    Ok(body)
 }
 
 

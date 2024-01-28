@@ -16,6 +16,7 @@ pub enum Error {
 	EmailAlreadyInUse,
 	PasswordLength,
 	RegistrationPayloadValidationError,
+	SendEmailError,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -70,6 +71,7 @@ impl Error {
 			Self::PasswordLength => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_LENGTH_SMALL),
 			Self::RegistrationPayloadValidationError => (StatusCode::BAD_REQUEST, ClientError::REGISTRATION_PAYLOAD_VALIDATION_ERROR),
 
+			Self::SendEmailError => (StatusCode::BAD_REQUEST, ClientError::SEND_EMAIL_ERROR),
 
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
@@ -104,6 +106,7 @@ pub enum ClientError {
 	EMAIL_IN_USE,
 	PASSWORD_LENGTH_SMALL,
 	REGISTRATION_PAYLOAD_VALIDATION_ERROR,
+	SEND_EMAIL_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
