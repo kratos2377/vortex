@@ -274,14 +274,3 @@ fn validate_user_payload(payload: &RegistrationPayload) -> bool {
 
     return true
 }
-
-// pub fn return_value_from_active_value<T>(value: &ActiveValue<T>) -> T {
-//     let value_got: T = match value {
-//         ActiveValue::Set(value_got_from_db) => value_got_from_db.clone(),
-//         ActiveValue::NotSet => T::new(),
-//         ActiveValue::Unchanged(_) => todo!(),
-
-//     };
-
-//     return value_got
-// }
