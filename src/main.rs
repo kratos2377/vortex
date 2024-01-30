@@ -15,7 +15,7 @@ pub mod routes;
 pub mod models;
 pub mod state;
 pub mod constants;
-pub mod game;
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
