@@ -17,6 +17,10 @@ pub enum Error {
 	PasswordLength,
 	RegistrationPayloadValidationError,
 	SendEmailError,
+	CreateLobbyError,
+	JoinLobbyError,
+	RemoveFromLobbyError,
+	DeleteLobbyError,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -73,6 +77,13 @@ impl Error {
 
 			Self::SendEmailError => (StatusCode::BAD_REQUEST, ClientError::SEND_EMAIL_ERROR),
 
+			//Create Lobby Error
+			Self::CreateLobbyError => (StatusCode::BAD_REQUEST, ClientError::CREATE_LOBBY_ERROR),
+			Self::JoinLobbyError => (StatusCode::BAD_REQUEST, ClientError::JOIN_LOBBY_ERROR),
+			Self::RemoveFromLobbyError => (StatusCode::BAD_REQUEST, ClientError::REMOVE_USER_FROM_LOBBY_ERROR),
+
+			Self::DeleteLobbyError => (StatusCode::BAD_REQUEST, ClientError::DELETE_LOBBY_ERROR),
+
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -107,6 +118,10 @@ pub enum ClientError {
 	PASSWORD_LENGTH_SMALL,
 	REGISTRATION_PAYLOAD_VALIDATION_ERROR,
 	SEND_EMAIL_ERROR,
+	CREATE_LOBBY_ERROR,
+	JOIN_LOBBY_ERROR,
+	REMOVE_USER_FROM_LOBBY_ERROR,
+	DELETE_LOBBY_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
