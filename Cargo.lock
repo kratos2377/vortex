@@ -2992,6 +2992,7 @@ dependencies = [
  "axum-macros",
  "chrono",
  "dotenv",
+ "futures-util",
  "lazy-regex",
  "lettre",
  "redis",

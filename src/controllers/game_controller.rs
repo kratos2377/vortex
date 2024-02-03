@@ -1,38 +1,52 @@
-use crate::{errors::{self, Error}, state::AppDBState};
-use axum::{extract::{Path, State, WebSocketUpgrade}, response::Response, Json};
+use crate::{errors::{self, Error}, state::{AppDBState, RoomState}};
+use axum::{extract::{ws::{Message, WebSocket}, Path, State, WebSocketUpgrade}, response::Response, Json};
 use redis::{Commands, RedisResult};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use errors::Result as APIResult;
 use uuid::Uuid;
-
+use futures_util::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
 
 #[derive(Clone, Debug, Deserialize)]
-struct CreateLobbyPayload {
+pub struct CreateLobbyPayload {
     pub user_id: String
 }
 
 
 #[derive(Clone, Debug, Deserialize)]
-struct JoinLobbyPayload {
+pub struct JoinLobbyPayload {
     pub user_id: String,
     pub game_id: String,
 }
 
 
 #[derive(Clone, Debug, Deserialize)]
-struct DestroyLobbyPayload {
+pub struct VerifyGameStatusPayload {
+    pub game_id: String,
+    pub game_name: String,
+}
+
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct DestroyLobbyPayload {
     pub game_id: String,
 }
 
 
 #[derive(Clone, Debug, Deserialize)]
-struct BrodcastGamePayload {
+pub struct BrodcastGamePayload {
     pub game_id: String,
     pub user_id: String,
     pub event_name: String,
 }
 
+
+#[derive(Deserialize)]
+pub struct WebsocketPayload {
+    pub user_id: String,
+    pub lobby_id: String,
+    pub username: String
+}
 
 
 pub async fn create_lobby(
@@ -48,6 +62,9 @@ pub async fn create_lobby(
     if create_result.is_err() {
         return Err(Error::CreateLobbyError)
     }
+
+    let mut rooms = state.rooms.lock().unwrap();
+    rooms.entry(game_id.to_string()).or_insert_with(RoomState::new);
 
     let body = Json(json!({
 		"result": {
@@ -73,6 +90,9 @@ pub async fn join_lobby(
     }
 
    let mut lobby_user_ids: Vec<String> = get_game_result.unwrap();
+   if *(&lobby_user_ids.len()) == 4 {
+    return Err(Error::LobbyFull)
+   }
     lobby_user_ids.push(payload.user_id.clone());
 
     
@@ -80,6 +100,42 @@ pub async fn join_lobby(
 
     if create_result.is_err() {
         return Err(Error::CreateLobbyError)
+    }
+
+    let body = Json(json!({
+		"result": {
+			"success": true
+		}
+	}));
+
+	Ok(body)
+
+}
+
+pub async fn verify_game_status(
+    state: State<AppDBState>,
+	payload: Json<VerifyGameStatusPayload>,
+) -> APIResult<Json<Value>> { 
+
+    if &payload.game_id == "" || &payload.game_name == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    let mut redisConnection = state.redis_connection.lock().unwrap();
+    let mut get_game_result = redisConnection.hkeys(&payload.game_id);
+
+    if get_game_result.is_err() {
+        return Err(Error::RedisUnwrapError)
+    }
+
+   let mut lobby_user_ids: Vec<String> = get_game_result.unwrap();
+ 
+
+    
+    if lobby_user_ids.len() != 2 && &payload.game_name == "chess" {
+        return Err(Error::GameCannotBeStarted)
+    } else if lobby_user_ids.len() < 2  {
+        return Err(Error::GameCannotBeStarted)
     }
 
     let body = Json(json!({
@@ -106,17 +162,22 @@ pub async fn remove_user_from_lobby(
 
    let lobby_user_ids: Vec<String> = get_game_result.unwrap();
     let new_lobby_user_ids: Vec<_> = lobby_user_ids.into_iter().filter(|x| x != &payload.user_id).collect();
-    
+    let new_lobby_size = &new_lobby_user_ids.len();
     let create_result: RedisResult<()> = redisConnection.set(&payload.game_id, new_lobby_user_ids);
 
     if create_result.is_err() {
         return Err(Error::RemoveFromLobbyError)
     }
 
+    if *new_lobby_size == 0 {
+       let mut rooms = state.rooms.lock().unwrap();
+       rooms.remove(&payload.game_id);
+    }
+
     let body = Json(json!({
 		"result": {
 			"success": true
-		}
+		} 
 	}));
 
 	Ok(body)
@@ -124,13 +185,12 @@ pub async fn remove_user_from_lobby(
 }
 
 pub async fn broadcast_game_event(
-    state: State<AppDBState>,
+    State(appState): State<AppDBState>,
     Path(lobby_id): Path<Uuid>,
-	payload: Json<DestroyLobbyPayload>,
     ws: WebSocketUpgrade,
 ) -> Response {
     ws.on_upgrade( move |socket| async move {
-
+        handle_socket_event(lobby_id , appState , socket , "random-username".to_string() ).await
     })
 }
 
@@ -153,4 +213,22 @@ pub async fn destroy_lobby_and_game(
 	}));
 
 	Ok(body)
+}
+
+async fn handle_socket_event(lobby_id: Uuid, app_state: AppDBState ,  socket: WebSocket , username: String) {
+   let (mut sender, mut receiver) = socket.split();
+   while let Some(Ok(msg)) = receiver.next().await {
+    if let Message::Text(text_recieved) = msg {
+        println!("PRINTING MESSAGE : {:?}" , text_recieved);
+        let _ = sender.send(Message::Text(String::from("A new message was recieved"))).await;
+    }
+
+    else if let Message::Close(_) = msg {
+        println!("CLOSING CONNECTIOn");
+    }
+
+}
+
+
+
 }

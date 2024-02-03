@@ -21,6 +21,9 @@ pub enum Error {
 	JoinLobbyError,
 	RemoveFromLobbyError,
 	DeleteLobbyError,
+	GameCannotBeStarted,
+	RedisUnwrapError,
+	LobbyFull,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -84,6 +87,13 @@ impl Error {
 
 			Self::DeleteLobbyError => (StatusCode::BAD_REQUEST, ClientError::DELETE_LOBBY_ERROR),
 
+
+			Self::GameCannotBeStarted => (StatusCode::BAD_REQUEST, ClientError::GAME_CANNOT_BE_STARTED),
+
+			Self::RedisUnwrapError => (StatusCode::BAD_REQUEST, ClientError::REDIS_UNWRAP_ERROR),
+
+			Self::LobbyFull => (StatusCode::BAD_REQUEST, ClientError::LOBBY_FULL_ERROR),
+
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -122,6 +132,9 @@ pub enum ClientError {
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
 	DELETE_LOBBY_ERROR,
+	GAME_CANNOT_BE_STARTED,
+	REDIS_UNWRAP_ERROR,
+	LOBBY_FULL_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
