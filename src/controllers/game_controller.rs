@@ -1,12 +1,10 @@
-use crate::{errors::{self, Error}, state::{AppDBState, RoomState}};
-use axum::{extract::{ws::{Message, WebSocket}, Path, State, WebSocketUpgrade}, response::Response, Json};
+use crate::{errors::{self, Error}, state::{AppDBState}};
+use axum::{extract::{ State}, response::Response, Json};
 use redis::{Commands, RedisResult};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use errors::Result as APIResult;
 use uuid::Uuid;
-use futures_util::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
-
 #[derive(Clone, Debug, Deserialize)]
 pub struct CreateLobbyPayload {
     pub user_id: String
@@ -44,8 +42,19 @@ pub struct BrodcastGamePayload {
 #[derive(Deserialize)]
 pub struct WebsocketPayload {
     pub user_id: String,
-    pub lobby_id: String,
-    pub username: String
+    pub game_name: String,
+    pub event: String
+}
+
+
+#[derive(Serialize , Deserialize)]
+
+pub struct WebSocketResponse {
+    pub event_name: String,
+    pub game_name: String,
+    pub user_id: String,
+    pub event_move: String,
+    pub next_user_turn: String,
 }
 
 
@@ -63,8 +72,6 @@ pub async fn create_lobby(
         return Err(Error::CreateLobbyError)
     }
 
-    let mut rooms = state.rooms.lock().unwrap();
-    rooms.entry(game_id.to_string()).or_insert_with(RoomState::new);
 
     let body = Json(json!({
 		"result": {
@@ -169,11 +176,6 @@ pub async fn remove_user_from_lobby(
         return Err(Error::RemoveFromLobbyError)
     }
 
-    if *new_lobby_size == 0 {
-       let mut rooms = state.rooms.lock().unwrap();
-       rooms.remove(&payload.game_id);
-    }
-
     let body = Json(json!({
 		"result": {
 			"success": true
@@ -184,15 +186,6 @@ pub async fn remove_user_from_lobby(
 
 }
 
-pub async fn broadcast_game_event(
-    State(appState): State<AppDBState>,
-    Path(lobby_id): Path<Uuid>,
-    ws: WebSocketUpgrade,
-) -> Response {
-    ws.on_upgrade( move |socket| async move {
-        handle_socket_event(lobby_id , appState , socket , "random-username".to_string() ).await
-    })
-}
 
 
 pub async fn destroy_lobby_and_game(
@@ -215,20 +208,3 @@ pub async fn destroy_lobby_and_game(
 	Ok(body)
 }
 
-async fn handle_socket_event(lobby_id: Uuid, app_state: AppDBState ,  socket: WebSocket , username: String) {
-   let (mut sender, mut receiver) = socket.split();
-   while let Some(Ok(msg)) = receiver.next().await {
-    if let Message::Text(text_recieved) = msg {
-        println!("PRINTING MESSAGE : {:?}" , text_recieved);
-        let _ = sender.send(Message::Text(String::from("A new message was recieved"))).await;
-    }
-
-    else if let Message::Close(_) = msg {
-        println!("CLOSING CONNECTIOn");
-    }
-
-}
-
-
-
-}

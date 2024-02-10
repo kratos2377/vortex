@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::{Arc, Mutex}};
 use axum::{Router};
 use dotenv::dotenv;
 use sea_orm::{Database};
+use socketioxide::SocketIo;
 use tower_cookies::CookieManagerLayer;
 use crate::state::AppDBState;
 
@@ -15,6 +16,7 @@ pub mod routes;
 pub mod models;
 pub mod state;
 pub mod constants;
+pub mod ws_events;
 
 #[tokio::main]
 async fn main() {
@@ -31,12 +33,15 @@ async fn main() {
     };
 
     let client = redis::Client::open(redis_url).unwrap();
-    let mut redis_connection = client.get_connection().unwrap();
+    let mut redis_connection = client.get_connection().unwrap(); 
+
+    let (layer, io) = SocketIo::builder().build_layer();
+
+    io.ns("/", ws_events::game_events::create_ws_events);
 
     
   //  Migrator::up(&conn, None).await.unwrap();
-    let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)),
-             rooms: Arc::new(Mutex::new(HashMap::new())) };
+    let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)) };
     // build our application with a route
     let user_routes = routes::user_routes::create_user_routes() ;
     let game_routes = routes::game_logic_routes::create_game_routes();
@@ -44,7 +49,8 @@ async fn main() {
                             .nest( "/api/v1/user", user_routes)
                             .nest( "/api/v1/game", game_routes)
                             .layer(CookieManagerLayer::new())
-                            .with_state(state);
+                            .with_state(state)
+                            .with_state(io);
 
 
     // run it
