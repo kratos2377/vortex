@@ -1,6 +1,6 @@
-use axum::{routing::post, Router};
+use axum::{middleware, routing::post, Router};
 
-use crate::{controllers, state::AppDBState};
+use crate::{controllers, state::AppDBState, utils};
 
 
 
@@ -11,4 +11,5 @@ pub fn create_game_routes() -> Router<AppDBState> {
         .route("/join_lobby", post(controllers::game_controller::join_lobby))
         .route("/remove_user_lobby", post(controllers::game_controller::remove_user_from_lobby))
         .route("/destroy_lobby_and_game", post(controllers::game_controller::destroy_lobby_and_game))
+        .route_layer(middleware::from_fn(utils::middleware::guard))
 }

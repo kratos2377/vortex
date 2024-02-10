@@ -6,11 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = { version = "0.7.4", features = ["ws"] }
+axum = "0.7.4"
 axum-macros = "0.4.1"
 chrono = { version = "0.4.32", features = ["serde"] }
 dotenv = "0.15.0"
 futures-util = "0.3.30"
+jsonwebtoken = "9.2.0"
 lazy-regex = "3.1.0"
 lettre = "0.11.4"
 redis = { version = "0.24.0", features = ["tokio-comp"] }
@@ -25,6 +26,7 @@ socketioxide = "0.10.2"
 
 strum_macros = "0.25.3"
 tokio = { version = "1.35.1", features = ["full"] }
+tower = "0.4.13"
 tower-cookies = "0.10.0"
 tower-http = { version = "0.5.1", features = ["cors"] }
 tracing = "0.1.40"

@@ -2,7 +2,6 @@ use crate::constants::SMTP_HOST;
 use crate::errors::Error;
 use crate::models;
 use crate::errors;
-use crate::middlewares;
 use crate::state::AppDBState;
 use axum::extract::State;
 use axum::Json;
@@ -98,10 +97,10 @@ pub async fn login_user(
         return Err(Error::PasswordIncorrect)
     }
 
-    let mut cookie = Cookie::new(middlewares::AUTH_TOKEN, user_found.id.to_string() + ".exp.sign");
-	cookie.set_http_only(true);
-	cookie.set_path("/");
-	cookies.add(cookie);
+    // let mut cookie = Cookie::new(middlewares::AUTH_TOKEN, user_found.id.to_string() + ".exp.sign");
+	// cookie.set_http_only(true);
+	// cookie.set_path("/");
+	// cookies.add(cookie);
 
     let body = Json(json!({
 		"result": {

@@ -1,22 +1,23 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::sync::{Arc, Mutex};
 
-use axum::{Router};
+use axum::Router;
 use dotenv::dotenv;
-use sea_orm::{Database};
+use sea_orm::Database;
 use socketioxide::SocketIo;
+use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
+use tower_http::cors::CorsLayer;
 use crate::state::AppDBState;
 
 
 pub mod errors;
-pub mod ctx;
-pub mod middlewares;
 pub mod controllers;
 pub mod routes;
 pub mod models;
 pub mod state;
 pub mod constants;
 pub mod ws_events;
+pub mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +34,7 @@ async fn main() {
     };
 
     let client = redis::Client::open(redis_url).unwrap();
-    let mut redis_connection = client.get_connection().unwrap(); 
+    let redis_connection = client.get_connection().unwrap(); 
 
     let (layer, io) = SocketIo::builder().build_layer();
 
@@ -48,7 +49,10 @@ async fn main() {
     let routes_all = Router::new()
                             .nest( "/api/v1/user", user_routes)
                             .nest( "/api/v1/game", game_routes)
-                            .layer(CookieManagerLayer::new())
+                            .layer(ServiceBuilder::new()
+                                    .layer(layer)
+                                    .layer(CookieManagerLayer::new())
+                                    .layer(CorsLayer::permissive()))
                             .with_state(state)
                             .with_state(io);
 
