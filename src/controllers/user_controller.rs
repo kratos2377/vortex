@@ -1,9 +1,12 @@
-use crate::constants::SMTP_HOST;
+use crate::constants::environment_variables::SMTP_HOST;
 use crate::errors::Error;
 use crate::models;
 use crate::errors;
 use crate::state::AppDBState;
+use crate::utils::api_error::APIError;
+use crate::utils::jwt::encode_jwt;
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::Json;
 use argon2::{self, Config};
 use chrono::Utc;
@@ -102,10 +105,16 @@ pub async fn login_user(
 	// cookie.set_path("/");
 	// cookies.add(cookie);
 
+    let generated_jwt_token = encode_jwt(user_found.id.to_string())
+    .map_err(|_| APIError { message: "Failed while Creating JWT token".to_owned(), status_code: StatusCode::UNAUTHORIZED, error_code: Some(41) }).unwrap();
+
+
     let body = Json(json!({
 		"result": {
 			"success": true
-		}
+		},
+
+        "token":  generated_jwt_token
 	}));
 
 	Ok(body)

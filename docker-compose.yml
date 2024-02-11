@@ -16,5 +16,16 @@ services:
       - ./.env
     ports:
       - "5050:80"
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    env_file:
+      - ./.env
+    volumes:
+      - redis_data:/data
 volumes:
   progresDB:
+  redis_data:
+    driver: local

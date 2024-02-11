@@ -1,2 +1,3 @@
 pub mod users;
 pub mod users_friends;
+pub mod users_wallet_keys;
