@@ -169,7 +169,6 @@ pub async fn remove_user_from_lobby(
 
    let lobby_user_ids: Vec<String> = get_game_result.unwrap();
     let new_lobby_user_ids: Vec<_> = lobby_user_ids.into_iter().filter(|x| x != &payload.user_id).collect();
-    let new_lobby_size = &new_lobby_user_ids.len();
     let create_result: RedisResult<()> = redisConnection.set(&payload.game_id, new_lobby_user_ids);
 
     if create_result.is_err() {
