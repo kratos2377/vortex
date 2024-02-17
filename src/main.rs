@@ -44,10 +44,10 @@ async fn main() {
   //  Migrator::up(&conn, None).await.unwrap();
     let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)) };
     // build our application with a route
-    let user_routes = routes::user_routes::create_user_routes() ;
+    let user_auth_routes = routes::user_auth_routes::create_user_routes() ;
     let game_routes = routes::game_logic_routes::create_game_routes();
     let routes_all = Router::new()
-                            .nest( "/api/v1/user", user_routes)
+                            .nest( "/api/v1/user", user_auth_routes)
                             .nest( "/api/v1/game", game_routes)
                             .layer(ServiceBuilder::new()
                                     .layer(layer)
