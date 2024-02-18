@@ -7,9 +7,9 @@ use uuid::Uuid;
 #[sea_orm(table_name = "users_friends_requests")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    id: Uuid,
-    user_sent_id: Uuid,
-    user_recieved_id: Uuid,
+    pub id: Uuid,
+    pub user_sent_id: Uuid,
+    pub user_recieved_id: Uuid,
 }
 
 
@@ -33,3 +33,9 @@ impl Related<super::users::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Entity {
+    pub fn find_by_id(id: &str) -> Select<Entity> {
+        Self::find().filter(Column::Id.eq(id))
+    }
+}

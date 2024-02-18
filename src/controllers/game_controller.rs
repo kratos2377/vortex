@@ -46,18 +46,6 @@ pub struct WebsocketPayload {
     pub event: String
 }
 
-
-#[derive(Serialize , Deserialize)]
-
-pub struct WebSocketResponse {
-    pub event_name: String,
-    pub game_name: String,
-    pub user_id: String,
-    pub event_move: String,
-    pub next_user_turn: String,
-}
-
-
 pub async fn create_lobby(
     state: State<AppDBState>,
 	payload: Json<CreateLobbyPayload>,

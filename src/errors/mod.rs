@@ -24,6 +24,8 @@ pub enum Error {
 	GameCannotBeStarted,
 	RedisUnwrapError,
 	LobbyFull,
+	WalletAddressSaveError,
+	ErrorWhileMakingRelation,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -94,6 +96,11 @@ impl Error {
 
 			Self::LobbyFull => (StatusCode::BAD_REQUEST, ClientError::LOBBY_FULL_ERROR),
 
+			Self::ErrorWhileMakingRelation => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_MAKING_RELATION),
+
+			//Address Error
+			Self::WalletAddressSaveError => (StatusCode::BAD_REQUEST, ClientError::WALLET_ADDRESS_SAVE_ERROR),
+
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -135,6 +142,8 @@ pub enum ClientError {
 	GAME_CANNOT_BE_STARTED,
 	REDIS_UNWRAP_ERROR,
 	LOBBY_FULL_ERROR,
+	ERROR_WHILE_MAKING_RELATION,
+	WALLET_ADDRESS_SAVE_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
