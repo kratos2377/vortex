@@ -30,11 +30,20 @@ pub enum Relation {
 
     #[sea_orm(has_many = "super::users_wallet_keys::Entity")]
     UsersWallets,
+
+    #[sea_orm(has_many = "super::users_friends_requests::Entity")]
+    UsersFriendsRequests,
 }
 
 impl Related<super::users_friends::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UsersFriends.def()
+    }
+}
+
+impl Related<super::users_friends_requests::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UsersFriendsRequests.def()
     }
 }
 
