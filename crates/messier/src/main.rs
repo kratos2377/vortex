@@ -39,7 +39,7 @@ async fn main() {
     let (layer, io) = SocketIo::builder().build_layer();
 
     io.ns("/", ws_events::game_events::create_ws_game_events);
-    io.ns("/", ws_events::user_events::create_ws_user_events);
+   // io.ns("/", ws_events::user_events::create_ws_user_events);
 
     
   //  Migrator::up(&conn, None).await.unwrap();
