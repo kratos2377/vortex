@@ -3,8 +3,7 @@ use std::thread::panicking;
 
 use crate::errors::Error;
 use crate::errors;
-use crate::models;
-use crate::models::users_wallet_keys;
+use ton::models::users_wallet_keys;
 use crate::state::AppDBState;
 use axum_macros::debug_handler;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}};

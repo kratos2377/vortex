@@ -13,7 +13,6 @@ use crate::state::AppDBState;
 pub mod errors;
 pub mod controllers;
 pub mod routes;
-pub mod models;
 pub mod state;
 pub mod constants;
 pub mod ws_events;

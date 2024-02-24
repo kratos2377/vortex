@@ -1,6 +1,5 @@
 use crate::constants::environment_variables::SMTP_HOST;
 use crate::errors::Error;
-use crate::models;
 use crate::errors;
 use crate::state::AppDBState;
 use crate::utils::api_error::APIError;
@@ -11,7 +10,7 @@ use axum::Json;
 use argon2::{self, Config};
 use chrono::Utc;
 use lazy_regex::Regex;
-use models::users::{self , Entity as Users};
+use ton::models::users::{self , Entity as Users};
 use errors::Result;
 use sea_orm::ActiveModelTrait;
 use lettre::transport::smtp::authentication::Credentials;
