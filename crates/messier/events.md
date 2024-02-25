@@ -1,7 +1,9 @@
-- [ ] Send message in room
+- [x] Send message in room
 - [ ] VO/IP in rooms
-- [ ] Parse game events
-- [ ] Join/leave events
-- [ ] Start/ Game over event
+- [x] Parse game events
+- [x] Join/leave events
+- [x] Start/ Game over event
 - [ ] Keep track of score event
 - [ ] Progress game event
+- [ ] Add kafka events for some usecases
+- [ ] Add gameover event

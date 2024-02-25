@@ -9,32 +9,32 @@ impl MigrationTrait for Migration {
         // Replace the sample below with your own migration scripts
         //todo!();
 
-        manager
+        let _ = manager
             .create_table(
                 Table::create()
                     .table(Users::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(User::Id)
+                        ColumnDef::new(Users::Id)
                             .uuid()
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(User::First_Name).string().not_null())
-                    .col(ColumnDef::new(User::Last_Name).string().not_null())
-                    .col(ColumnDef::new(User::Password).string().not_null())
-                    .col(ColumnDef::new(User::Email).string().not_null())
-                    .col(ColumnDef::new(User::Username).string().not_null())
-                    .col(ColumnDef::new(User::Verified).boolean().not_null().default(Value::from(false)))
-                    .col(ColumnDef::new(User::Score).integer().not_null().default(Value::from(0)))
-                    .col(ColumnDef::new(User::CreatedAt).date_time().not_null())
-                    .col(ColumnDef::new(User::UpdatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Users::First_Name).string().not_null())
+                    .col(ColumnDef::new(Users::Last_Name).string().not_null())
+                    .col(ColumnDef::new(Users::Password).string().not_null())
+                    .col(ColumnDef::new(Users::Email).string().not_null())
+                    .col(ColumnDef::new(Users::Username).string().not_null())
+                    .col(ColumnDef::new(Users::Verified).boolean().not_null().default(Value::from(false)))
+                    .col(ColumnDef::new(Users::Score).integer().not_null().default(Value::from(0)))
+                    .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Users::UpdatedAt).date_time().not_null())
                     .to_owned(),
             )
             .await;
 
 
-            manager
+            let _ = manager
             .create_table(
                 Table::create()
                     .table(UsersFriends::Table)
@@ -58,7 +58,7 @@ impl MigrationTrait for Migration {
             .await;
 
         
-            manager
+            let _ = manager
             .create_table(
                 Table::create()
                     .table(UsersWallets::Table)
@@ -103,31 +103,31 @@ impl MigrationTrait for Migration {
                     )
                     .to_owned(),
             )
-            .await;
+            .await
 
 
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
-        todo!();
+      //  todo!();
 
-        manager
+        let _ = manager
             .drop_table(Table::drop().table(Users::Table).to_owned())
             .await;
 
 
-            manager
+            let _ = manager
             .drop_table(Table::drop().table(UsersFriends::Table).to_owned())
             .await;
 
-        manager
+        let _ = manager
         .drop_table(Table::drop().table(UsersWallets::Table).to_owned())
         .await;
 
         manager
         .drop_table(Table::drop().table(UsersFriendsRequests::Table).to_owned())
-        .await;
+        .await
     }
 }
 

@@ -15,3 +15,4 @@ path = "src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 sea-orm = "0.12.12"
 uuid = { version = "1.7.0", features = ["serde", "v4"] }
+chrono = { version = "0.4.32", features = ["serde"] }
