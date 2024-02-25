@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use axum::Router;
+use axum::{handler::Handler, Router};
 use dotenv::dotenv;
 use sea_orm::Database;
 use socketioxide::SocketIo;
@@ -13,6 +13,7 @@ use crate::state::AppDBState;
 pub mod errors;
 pub mod controllers;
 pub mod routes;
+pub mod kafka;
 pub mod state;
 pub mod constants;
 pub mod ws_events;
@@ -35,14 +36,18 @@ async fn main() {
     let client = redis::Client::open(redis_url).unwrap();
     let redis_connection = client.get_connection().unwrap(); 
 
-    let (layer, io) = SocketIo::builder().build_layer();
 
-    io.ns("/", ws_events::game_events::create_ws_game_events);
+
    // io.ns("/", ws_events::user_events::create_ws_user_events);
 
     
   //  Migrator::up(&conn, None).await.unwrap();
     let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)) };
+
+    let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
+    let (layer, io) = SocketIo::builder().build_layer().with_state(kafka_producer);
+
+    io.ns("/", ws_events::game_events::create_ws_game_events);
     // build our application with a route
     let user_auth_routes = routes::user_auth_routes::create_user_routes() ;
     let user_logic_routes = routes::user_logic_routes::create_user_logic_routes();
