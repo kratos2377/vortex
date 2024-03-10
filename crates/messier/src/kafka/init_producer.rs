@@ -24,9 +24,9 @@ pub fn create_new_kafka_producer() -> Result<FutureProducer, Error> {
         .set("request.required.acks", "all") // Wait for acknowledge from broker
         .set("message.send.max.retries", "3") // Default
         .set("client.id", "client.id") // Set an identifiable name for traceability
-        .create()?;
+        .create().unwrap();
 
-    producer.init_transactions(Timeout::from(Duration::from_secs(30)))?;
+    producer.init_transactions(Timeout::from(Duration::from_secs(30))).unwrap();
 
     Ok(producer)
 }

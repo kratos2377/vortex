@@ -38,4 +38,4 @@ uuid = { version = "1.7.0", features = ["serde", "v4"] }
 #external proj
 migration = { path = "../migration" }
 ton = { path = "../ton" }
-rdkafka = "0.36.2"
+rdkafka = { version = "0.36.2", features = ["cmake-build"] }

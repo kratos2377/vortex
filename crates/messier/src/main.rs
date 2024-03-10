@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use axum::{handler::Handler, Router};
 use dotenv::dotenv;
 use sea_orm::Database;
-use socketioxide::SocketIo;
+use socketioxide::{extract::SocketRef, socket, SocketIo};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
@@ -20,7 +20,7 @@ pub mod ws_events;
 pub mod utils;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     dotenv().ok();
 
     //Connect with database
@@ -45,9 +45,11 @@ async fn main() {
     let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)) };
 
     let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
-    let (layer, io) = SocketIo::builder().build_layer().with_state(Arc::new(kafka_producer));
+    let (layer, io) = SocketIo::builder().build_layer();
 
-    io.ns("/", ws_events::game_events::create_ws_game_events);
+    io.ns("/", |socket: SocketRef| {
+        ws_events::game_events::create_ws_game_events(socket , axum::extract::State(Arc::new(kafka_producer)))
+    });
     // build our application with a route
     let user_auth_routes = routes::user_auth_routes::create_user_routes() ;
     let user_logic_routes = routes::user_logic_routes::create_user_logic_routes();
@@ -70,4 +72,6 @@ async fn main() {
         .unwrap();
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, routes_all).await.unwrap();
+
+    Ok(())
 }
