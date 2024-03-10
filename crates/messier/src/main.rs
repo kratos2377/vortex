@@ -45,7 +45,7 @@ async fn main() {
     let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)) };
 
     let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
-    let (layer, io) = SocketIo::builder().build_layer().with_state(kafka_producer);
+    let (layer, io) = SocketIo::builder().build_layer().with_state(Arc::new(kafka_producer));
 
     io.ns("/", ws_events::game_events::create_ws_game_events);
     // build our application with a route

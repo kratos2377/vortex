@@ -36,10 +36,10 @@ pub struct GameMessagePayload {
     pub message: String,
     pub game_id: String
 }
-pub async fn create_ws_game_events(socket: SocketRef, state: State<FutureProducer>) {
+pub async fn create_ws_game_events(socket: SocketRef, state: State<Arc<FutureProducer>>) {
 
 
-
+    
     socket.on("joined-room", |s: SocketRef , msg: Data::<String>| {
         let data: JoinedRoomPayload = serde_json::from_str(&msg)?;
 
