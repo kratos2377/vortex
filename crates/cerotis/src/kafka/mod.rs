@@ -1,1 +1,1 @@
-pub mod init_consumer;
+pub mod consumer;
