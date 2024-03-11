@@ -1,9 +1,9 @@
 use axum::extract::State;
-use rdkafka::producer::FutureProducer;
+use rdkafka::{producer::{FutureProducer, Producer}, util::Timeout};
 use serde::{Deserialize, Serialize};
 use socketioxide::{extract::{Data, SocketRef}, handler::ConnectHandler, socket};
 use tracing::info;
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 #[derive(Deserialize , Serialize)]
 pub struct JoinedRoomPayload {
     pub user_id: String,
@@ -41,6 +41,7 @@ pub struct GameMessagePayload {
 }
 pub fn create_ws_game_events(socket: SocketRef, state: State<Arc<FutureProducer>>) {
     
+    producer_kafka_event(&state.0, "topic".to_string());
     
     socket.on("joined-room", |socket: SocketRef , Data::<String>(msg) | {
         let data: JoinedRoomPayload = serde_json::from_str(&msg).unwrap();
@@ -84,4 +85,16 @@ pub fn create_ws_game_events(socket: SocketRef, state: State<Arc<FutureProducer>
 });
 
 
+}
+
+
+
+// Publish that user has joined to user friends
+fn producer_kafka_event(producer: &FutureProducer, topic: String) {
+    producer.begin_transaction().unwrap();
+
+    //Create a future to be published
+    //producer.send(record, Duration::from_secs(10));
+
+    producer.commit_transaction(Timeout::from(Duration::from_secs(10))).unwrap();   
 }

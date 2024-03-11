@@ -598,6 +598,21 @@ checksum = "3286b845d0fccbdd15af433f61c5970e711987036cb468f437ff6badd70f4e24"
 [[package]]
 name = "cerotis"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "rdkafka",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "socketioxide",
+ "tokio",
+ "tower",
+ "tower-cookies",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
 
 [[package]]
 name = "cfg-if"
