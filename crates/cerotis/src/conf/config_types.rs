@@ -44,3 +44,9 @@ pub struct KafkaConfiguration {
     pub schema_registry: SchemaRegistryProperties,
     pub topic: TopicConfiguration,
 }
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+pub struct ServerConfiguration {
+    pub port: u16,
+}
