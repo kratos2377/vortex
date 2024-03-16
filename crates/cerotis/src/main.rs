@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr};
 
 use api::health;
 use axum::{routing::get, Router};
@@ -44,10 +44,40 @@ async fn start_web_server(
     .await
     .unwrap();
 println!("listening on {}", listener.local_addr().unwrap());
-axum::serve(listener, routing.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+axum::serve(listener, routing.into_make_service_with_connect_info::<SocketAddr>()).with_graceful_shutdown(shutdown_signal(shutdown_handles)).await.unwrap();
 
     // Shutdown tracing provider
 }
+
+
+pub async fn shutdown_signal(shutdown_handles: Vec<JoinHandle<()>>) {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Initialization of Ctrl+C handler failed");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Initialization of signal handler failed")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    for handle in shutdown_handles {
+        handle.abort();
+    }
+}
+
 
 fn init_routing() -> Router {
     let base_router = Router::new().route("/health", get(health));

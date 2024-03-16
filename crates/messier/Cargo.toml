@@ -39,3 +39,4 @@ uuid = { version = "1.7.0", features = ["serde", "v4"] }
 migration = { path = "../migration" }
 ton = { path = "../ton" }
 rdkafka = { version = "0.36.2", features = ["cmake-build"] }
+serde_bytes = "0.11.14"
