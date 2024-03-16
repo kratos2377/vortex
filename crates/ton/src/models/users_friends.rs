@@ -7,9 +7,9 @@ use uuid::Uuid;
 #[sea_orm(table_name = "users_friends")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    id: Uuid,
-    userid: Uuid,
-    friendid: Uuid,
+    pub id: Uuid,
+    pub userid: Uuid,
+    pub friendid: Uuid,
 }   
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

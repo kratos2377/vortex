@@ -12,6 +12,7 @@ pub fn create_user_logic_routes() -> Router<AppDBState> {
     .route("/add_wallet_address", post(controllers::user_logic_controller::add_wallet_address))
     .route("/get_user_wallets", post(controllers::user_logic_controller::get_user_wallets))
     .route("/delete_wallet_address", post(controllers::user_logic_controller::delete_wallet_address))
+    .route("/users_online_friends", get(controllers::user_logic_controller::get_online_friends))
     .route_layer(middleware::from_fn(utils::middleware::guard))
 
 }

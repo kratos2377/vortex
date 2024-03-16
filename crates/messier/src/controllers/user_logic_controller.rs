@@ -1,19 +1,19 @@
 use std::str::FromStr;
-use std::thread::panicking;
 
 use crate::errors::Error;
 use crate::errors;
-use ton::models::{self, users_wallet_keys};
-use crate::state::AppDBState;
 use axum_macros::debug_handler;
-use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}};
+use redis::{Commands, RedisError, RedisResult};
+use ton::models::{self, users, users_wallet_keys};
+use crate::state::AppDBState;
+use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
 use axum::extract::State;
 use axum::Json;
-use errors::Result;
-use sea_orm::ActiveModelTrait;
+use errors::Result as APIResult;
+use sea_orm::{ActiveModelTrait, TryIntoModel};
 use sea_orm::EntityTrait;
 use sea_orm::Set;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
 use uuid::Uuid;
@@ -55,10 +55,25 @@ pub struct GetUserWalletPayload {
     user_id: String,
 }
 
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct GetOnlineFriendsPayload {
+    user_id: String,
+}
+
+
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct GetOnlineFriendsResponseModel {
+   pub user_id: String,
+   pub username: String,
+   pub first_name: String,
+   pub last_name: String,
+}
+
+
 pub async fn send_request(
     state: State<AppDBState>,
 	payload: Json<SendRequestPayload>,
-) -> Result<Json<Value>> {
+) -> APIResult<Json<Value>> {
     if &payload.user_recieved_id == "" || &payload.user_sent_id == "" {
         return Err(Error::MissingParamsError);
     }
@@ -85,7 +100,7 @@ pub async fn send_request(
 pub async fn accept_or_reject_request(
     state: State<AppDBState>,
 	Json(payload): Json<AcceptOrRejectRequestPayload>,
-) -> Result<Json<Value>> {
+) -> APIResult<Json<Value>> {
     if payload.value == "" || payload.friend_request_relation_id == "" {
         return Err(Error::MissingParamsError)
     }
@@ -156,7 +171,7 @@ pub async fn accept_or_reject_request(
 pub async fn get_user_friend_requests(
     state: State<AppDBState>,
 	Json(payload): Json<GetFriendsRequestPayload>,
-) -> Result<Json<Value>>{
+) -> APIResult<Json<Value>>{
     if payload.user_id == ""  {
         return Err(Error::MissingParamsError)
     }
@@ -180,7 +195,7 @@ pub async fn get_user_friend_requests(
 pub async fn add_wallet_address(
     state: State<AppDBState>,
 	Json(payload): Json<AddWalletAddressPayload>,
-) -> Result<Json<Value>> {
+) -> APIResult<Json<Value>> {
     if &payload.wallet_address == "" || &payload.wallet_name =="" || &payload.user_id == "" {
         return Err(Error::MissingParamsError)
     }
@@ -213,7 +228,7 @@ pub async fn add_wallet_address(
 pub async fn get_user_wallets(
     state: State<AppDBState>,
 	Json(payload): Json<GetUserWalletPayload>,
-) -> Result<Json<Value>> {
+) -> APIResult<Json<Value>> {
     if &payload.user_id == ""  {
         return Err(Error::MissingParamsError)
     }
@@ -239,7 +254,7 @@ pub async fn get_user_wallets(
 pub async fn delete_wallet_address(
     state: State<AppDBState>,
 	Json(payload): Json<DeleteWalletAddressPayload>,
-) -> Result<Json<Value>>{
+) -> APIResult<Json<Value>>{
     if &payload.user_id == "" || &payload.id == "" {
         return Err(Error::MissingParamsError)
     }
@@ -257,6 +272,62 @@ pub async fn delete_wallet_address(
      Ok(body)
 }
 
-pub async fn get_online_friends() {
-    todo!()
+pub async fn get_online_friends(
+    state: State<AppDBState>,
+	payload: Json<GetOnlineFriendsPayload>,
+) -> APIResult<Json<Value>> {
+    if &payload.user_id == ""  {
+        return Err(Error::MissingParamsError)
+    }
+
+    let redis_conn = state.redis_connection.lock().unwrap();
+
+     let mut results_resp: Vec<GetOnlineFriendsResponseModel>  = vec![];
+     let result = users_friends::Entity::find_by_user_id(&payload.user_id).all(&state.conn).await.unwrap();
+
+
+    
+
+        
+            for mo in result.iter() {
+  let user_friend: users_friends::Model = mo.clone().try_into_model().unwrap();
+        // let new_res: Result<String, RedisError> = redisConn.hkeys(user_friend.friendid.to_string());
+
+        // if new_res.is_err() {
+        //     continue;
+        // }
+
+        
+            let friend_result = match Users::find_by_id(&user_friend.friendid.to_string())
+                .one(&state.conn)
+                .await
+            {
+                Ok(data) => data,
+                Err(err) => continue, // Skip to the next iteration on error
+            };
+
+            let user_type_details = friend_result.unwrap().try_into_model().unwrap();
+
+            let online_friend_response = GetOnlineFriendsResponseModel {
+                user_id: user_type_details.id.to_string(),
+                username: user_type_details.username,
+                first_name: user_type_details.first_name,
+                last_name: user_type_details.last_name,
+            };
+
+            results_resp.push(online_friend_response);
+     
+        
+            }
+   
+
+    let body = Json(json!({
+		"result": {
+			"success": true,
+            "users": serde_json::to_string(&results_resp).unwrap()
+		}
+	}));
+
+
+     Ok(body)
 }
