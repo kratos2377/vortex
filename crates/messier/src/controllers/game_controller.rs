@@ -5,46 +5,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use errors::Result as APIResult;
 use uuid::Uuid;
-#[derive(Clone, Debug, Deserialize)]
-pub struct CreateLobbyPayload {
-    pub user_id: String
-}
 
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, JoinLobbyPayload, SpectateGamePayload, VerifyGameStatusPayload};
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct JoinLobbyPayload {
-    pub user_id: String,
-    pub game_id: String,
-}
-
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct VerifyGameStatusPayload {
-    pub game_id: String,
-    pub game_name: String,
-}
-
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct DestroyLobbyPayload {
-    pub game_id: String,
-}
-
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct BrodcastGamePayload {
-    pub game_id: String,
-    pub user_id: String,
-    pub event_name: String,
-}
-
-
-#[derive(Deserialize)]
-pub struct WebsocketPayload {
-    pub user_id: String,
-    pub game_name: String,
-    pub event: String
-}
 
 pub async fn create_lobby(
     state: State<AppDBState>,
@@ -194,4 +157,47 @@ pub async fn destroy_lobby_and_game(
 
 	Ok(body)
 }
+
+pub async fn start_spectating_game(
+    state: State<AppDBState>,
+	payload: Json<SpectateGamePayload>,
+) -> APIResult<Json<Value>> {
+    let mut redisConnection  = state.redis_connection.lock().unwrap();
+
+    let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
+    if delete_query_result.is_err() {
+        return Err(Error::DeleteLobbyError)
+    }
+
+    let body = Json(json!({
+		"result": {
+			"success": true
+		}
+	}));
+
+	Ok(body)
+}
+
+pub async fn stop_spectating_game(
+    state: State<AppDBState>,
+	payload: Json<DestroyLobbyPayload>,
+) -> APIResult<Json<Value>> {
+    let mut redisConnection  = state.redis_connection.lock().unwrap();
+
+    let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
+    if delete_query_result.is_err() {
+        return Err(Error::DeleteLobbyError)
+    }
+
+    let body = Json(json!({
+		"result": {
+			"success": true
+		}
+	}));
+
+	Ok(body)
+}
+
+
+
 

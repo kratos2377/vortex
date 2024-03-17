@@ -1,4 +1,5 @@
 use crate::constants::environment_variables::SMTP_HOST;
+use crate::controllers::payloads::ResponseUser;
 use crate::errors::Error;
 use crate::errors;
 use crate::state::AppDBState;
@@ -21,49 +22,11 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
 use serde_json::Value;
-use tower_cookies::Cookie;
 use tower_cookies::Cookies;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct LoginPayload {
-	usernameoremail: String,
-	pwd: String,
-}
+use super::payloads::{LoginPayload, RegistrationPayload, SendEmailPayload, VerifyUserPayload};
 
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct RegistrationPayload {
-    first_name: String,
-    last_name: String,
-    email: String,
-	username: String,
-	password: String,
-}
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct VerifyUserPayload {
-    id: String
-}
-
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct SendEmailPayload {
-    id: String,
-    to_email: String,
-}
-
-
-#[derive(Clone , Debug, Serialize)]
-pub struct ResponseUser {
-    id: Uuid,
-    username: String,
-    first_name: String,
-    last_name: String,
-    email: String,
-    score: u64,
-    verified: bool,
-}
 
 
 

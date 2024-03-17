@@ -42,13 +42,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
     
   //  Migrator::up(&conn, None).await.unwrap();
-    let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)) };
-
-    let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
+  
+  let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
+  let kafka_prod_clone = kafka_producer.clone();
+  let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)), producer: kafka_producer };
     let (layer, io) = SocketIo::builder().build_layer();
 
     io.ns("/", |socket: SocketRef| {
-        ws_events::game_events::create_ws_game_events(socket , axum::extract::State(Arc::new(kafka_producer)))
+        ws_events::game_events::create_ws_game_events(socket , axum::extract::State(Arc::new(kafka_prod_clone)))
     });
     // build our application with a route
     let user_auth_routes = routes::user_auth_routes::create_user_routes() ;

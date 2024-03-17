@@ -1,9 +1,9 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::MutexGuard};
 
 use crate::errors::Error;
 use crate::errors;
 use axum_macros::debug_handler;
-use redis::{Commands, RedisError, RedisResult};
+use redis::{Commands, Connection, RedisError, RedisResult};
 use ton::models::{self, users, users_wallet_keys};
 use crate::state::AppDBState;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
@@ -18,56 +18,8 @@ use serde_json::json;
 use serde_json::Value;
 use uuid::Uuid;
 
-#[derive( Clone, Debug, Deserialize)]
-pub struct SendRequestPayload {
- pub user_sent_id: String,
- pub user_recieved_id: String,
-}
+use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, SendRequestPayload};
 
-#[derive( Clone, Debug, Deserialize)]
-pub struct AcceptOrRejectRequestPayload {
-    value: String,
-    friend_request_relation_id: String,
-}
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct GetFriendsRequestPayload {
-    user_id: String,
-}
-
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct AddWalletAddressPayload {
-    user_id: String,
-    wallet_address: String,
-    wallet_name: String,
-}
-
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct DeleteWalletAddressPayload {
-    id: String,
-    user_id: String,
-}
-
-#[derive( Clone, Debug, Deserialize)]
-pub struct GetUserWalletPayload {
-    user_id: String,
-}
-
-#[derive( Clone, Debug, Deserialize , Serialize)]
-pub struct GetOnlineFriendsPayload {
-    user_id: String,
-}
-
-
-#[derive( Clone, Debug, Deserialize , Serialize)]
-pub struct GetOnlineFriendsResponseModel {
-   pub user_id: String,
-   pub username: String,
-   pub first_name: String,
-   pub last_name: String,
-}
 
 
 pub async fn send_request(
@@ -273,30 +225,27 @@ pub async fn delete_wallet_address(
 }
 
 pub async fn get_online_friends(
-    state: State<AppDBState>,
-	payload: Json<GetOnlineFriendsPayload>,
+    State(state): State<AppDBState>,
+	Json(payload): Json<GetOnlineFriendsPayload>,
 ) -> APIResult<Json<Value>> {
     if &payload.user_id == ""  {
         return Err(Error::MissingParamsError)
     }
 
-    let redis_conn = state.redis_connection.lock().unwrap();
 
      let mut results_resp: Vec<GetOnlineFriendsResponseModel>  = vec![];
      let result = users_friends::Entity::find_by_user_id(&payload.user_id).all(&state.conn).await.unwrap();
 
+    // let mut redis_conn = state.redis_connection.lock().unwrap();
 
     
-
+        // Only add keys if the user_id key is present in redis cluster
+        // But we might have to use async redis because not able to pass data safely in threads in single thread
         
             for mo in result.iter() {
   let user_friend: users_friends::Model = mo.clone().try_into_model().unwrap();
-        // let new_res: Result<String, RedisError> = redisConn.hkeys(user_friend.friendid.to_string());
-
-        // if new_res.is_err() {
-        //     continue;
-        // }
-
+                
+    
         
             let friend_result = match Users::find_by_id(&user_friend.friendid.to_string())
                 .one(&state.conn)
@@ -331,3 +280,4 @@ pub async fn get_online_friends(
 
      Ok(body)
 }
+

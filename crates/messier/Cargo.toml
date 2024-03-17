@@ -40,3 +40,4 @@ migration = { path = "../migration" }
 ton = { path = "../ton" }
 rdkafka = { version = "0.36.2", features = ["cmake-build"] }
 serde_bytes = "0.11.14"
+mongodb = { version = "2.8.2" , features = ["zstd-compression", "snappy-compression", "zlib-compression"]}
