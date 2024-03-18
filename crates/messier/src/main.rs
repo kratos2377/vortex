@@ -18,6 +18,8 @@ pub mod state;
 pub mod constants;
 pub mod ws_events;
 pub mod utils;
+pub mod conf;
+pub mod mongo_pool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>  {
@@ -35,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
     let client = redis::Client::open(redis_url).unwrap();
     let redis_connection = client.get_connection().unwrap(); 
-
+    let db_client = Arc::new(mongo_pool::init_db_client(&config.database).await?);
 
 
    // io.ns("/", ws_events::user_events::create_ws_user_events);
