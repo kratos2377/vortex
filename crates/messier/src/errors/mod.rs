@@ -26,6 +26,8 @@ pub enum Error {
 	LobbyFull,
 	WalletAddressSaveError,
 	ErrorWhileMakingRelation,
+	SpectateGameJoinError,
+	SpectateGameLeaveError,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
@@ -101,6 +103,10 @@ impl Error {
 			//Address Error
 			Self::WalletAddressSaveError => (StatusCode::BAD_REQUEST, ClientError::WALLET_ADDRESS_SAVE_ERROR),
 
+			// Spectate Game join error
+			Self::SpectateGameJoinError => (StatusCode::BAD_REQUEST , ClientError::SPECTATE_GAME_JOIN_ERROR),
+			Self::SpectateGameLeaveError => (StatusCode::BAD_REQUEST , ClientError::SPECTATE_GAME_LEAVE_ERROR),
+
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -144,6 +150,8 @@ pub enum ClientError {
 	LOBBY_FULL_ERROR,
 	ERROR_WHILE_MAKING_RELATION,
 	WALLET_ADDRESS_SAVE_ERROR,
+	SPECTATE_GAME_JOIN_ERROR,
+	SPECTATE_GAME_LEAVE_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,

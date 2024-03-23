@@ -169,10 +169,13 @@ pub async fn start_spectating_game(
     let arc_redis_client = state.context.get_redis_db_client();
     let mut redisConnection  = arc_redis_client.lock().unwrap();
 
-    let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
-    if delete_query_result.is_err() {
-        return Err(Error::DeleteLobbyError)
+    
+    let result: RedisResult<()> =  redisConnection.hset(&payload.game_id, &payload.user_id, &payload.socket_id) ;
+
+    if result.is_err() {
+        return Err(Error::SpectateGameJoinError)
     }
+
 
     let body = Json(json!({
 		"result": {
@@ -185,15 +188,18 @@ pub async fn start_spectating_game(
 
 pub async fn stop_spectating_game(
     state: State<AppDBState>,
-	payload: Json<DestroyLobbyPayload>,
+	payload: Json<SpectateGamePayload>,
 ) -> APIResult<Json<Value>> {
     let arc_redis_client = state.context.get_redis_db_client();
     let mut redisConnection  = arc_redis_client.lock().unwrap();
 
-    let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
-    if delete_query_result.is_err() {
-        return Err(Error::DeleteLobbyError)
+    
+    let result: RedisResult<()> =  redisConnection.hdel(&payload.game_id, &payload.user_id) ;
+
+    if result.is_err() {
+        return Err(Error::SpectateGameLeaveError)
     }
+
 
     let body = Json(json!({
 		"result": {
