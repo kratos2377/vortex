@@ -224,6 +224,8 @@ pub async fn delete_wallet_address(
      Ok(body)
 }
 
+
+#[debug_handler]
 pub async fn get_online_friends(
     State(state): State<AppDBState>,
 	Json(payload): Json<GetOnlineFriendsPayload>,
@@ -236,8 +238,9 @@ pub async fn get_online_friends(
      let mut results_resp: Vec<GetOnlineFriendsResponseModel>  = vec![];
      let result = users_friends::Entity::find_by_user_id(&payload.user_id).all(&state.conn).await.unwrap();
 
-    // let mut redis_conn = state.redis_connection.lock().unwrap();
 
+
+     let arc_redis_client = state.context.get_redis_db_client();
     
         // Only add keys if the user_id key is present in redis cluster
         // But we might have to use async redis because not able to pass data safely in threads in single thread
@@ -256,6 +259,15 @@ pub async fn get_online_friends(
             };
 
             let user_type_details = friend_result.unwrap().try_into_model().unwrap();
+
+            let mut redisConnection  = arc_redis_client.lock().unwrap();
+            let does_friend_key_exist_in_redis: RedisResult<()> = redisConnection.hkeys(user_type_details.id.to_string().clone());
+
+            if does_friend_key_exist_in_redis.is_err() {
+                continue;
+            }
+
+            
 
             let online_friend_response = GetOnlineFriendsResponseModel {
                 user_id: user_type_details.id.to_string(),

@@ -7,7 +7,7 @@ use socketioxide::{extract::SocketRef, socket, SocketIo};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
-use crate::state::AppDBState;
+use crate::{conf::configuration, context::context::ContextImpl, state::AppDBState};
 
 
 pub mod errors;
@@ -16,6 +16,7 @@ pub mod routes;
 pub mod kafka;
 pub mod state;
 pub mod constants;
+pub mod context;
 pub mod ws_events;
 pub mod utils;
 pub mod conf;
@@ -23,22 +24,24 @@ pub mod mongo_pool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>  {
+    let config = configuration::Configuration::load().unwrap();
     dotenv().ok();
 
     //Connect with database
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let from_email = std::env::var("FROM_EMAIL").expect("FROM_EMAIL must be set");
-    let smtp_key = std::env::var("SMTP_KEY").expect("SMTP_KEY must be set");
-    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL must be set");
-    let connection = match Database::connect(database_url.to_string()).await {
+    let connection = match Database::connect(config.postgres_url.url).await {
         Ok(connection) => connection,
         Err(e) => panic!("{:?}",e)
     };
 
-    let client = redis::Client::open(redis_url).unwrap();
+    let client = redis::Client::open(config.redis_url.url).unwrap();
     let redis_connection = client.get_connection().unwrap(); 
-    let db_client = Arc::new(mongo_pool::init_db_client(&config.database).await?);
+    let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
 
+    let context = ContextImpl::new_dyn_context(
+        mongo_db_client,
+        Arc::new(Mutex::new(redis_connection))
+
+    );
 
    // io.ns("/", ws_events::user_events::create_ws_user_events);
 
@@ -47,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
   
   let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
   let kafka_prod_clone = kafka_producer.clone();
-  let state = AppDBState {conn: connection , from_email: from_email , smtp_key: smtp_key, redis_connection: Arc::new(Mutex::new(redis_connection)), producer: kafka_producer };
+  let state = AppDBState {conn: connection , from_email: config.email_config.from_email , smtp_key: config.email_config.smtp_key, context: context, producer: kafka_producer };
     let (layer, io) = SocketIo::builder().build_layer();
 
     io.ns("/", |socket: SocketRef| {

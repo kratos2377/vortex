@@ -1,7 +1,6 @@
 use crate::{errors::{self, Error}, state::{AppDBState}};
 use axum::{extract::{ State}, response::Response, Json};
 use redis::{Commands, RedisResult};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use errors::Result as APIResult;
 use uuid::Uuid;
@@ -14,7 +13,8 @@ pub async fn create_lobby(
 	payload: Json<CreateLobbyPayload>,
 ) -> APIResult<Json<Value>> {
     let game_id = Uuid::new_v4();
-    let mut redisConnection  = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
 
     let lobby_user_ids = vec![payload.user_id.clone()];
     let create_result: RedisResult<()> = redisConnection.set(game_id.to_string(), lobby_user_ids);
@@ -40,7 +40,8 @@ pub async fn join_lobby(
 	payload: Json<JoinLobbyPayload>,
 ) -> APIResult<Json<Value>> { 
 
-    let mut redisConnection  = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
 
     let mut get_game_result = redisConnection.hkeys(&payload.game_id);
     if get_game_result.is_err() {
@@ -79,7 +80,8 @@ pub async fn verify_game_status(
         return Err(Error::MissingParamsError)
     }
 
-    let mut redisConnection = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
     let mut get_game_result = redisConnection.hkeys(&payload.game_id);
 
     if get_game_result.is_err() {
@@ -111,7 +113,8 @@ pub async fn remove_user_from_lobby(
 	payload: Json<JoinLobbyPayload>,
 ) -> APIResult<Json<Value>> { 
 
-    let mut redisConnection  = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
 
     let get_game_result = redisConnection.hkeys(&payload.game_id);
     if get_game_result.is_err() {
@@ -142,7 +145,8 @@ pub async fn destroy_lobby_and_game(
     state: State<AppDBState>,
 	payload: Json<DestroyLobbyPayload>,
 ) -> APIResult<Json<Value>> {
-    let mut redisConnection  = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
 
     let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
     if delete_query_result.is_err() {
@@ -162,7 +166,8 @@ pub async fn start_spectating_game(
     state: State<AppDBState>,
 	payload: Json<SpectateGamePayload>,
 ) -> APIResult<Json<Value>> {
-    let mut redisConnection  = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
 
     let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
     if delete_query_result.is_err() {
@@ -182,7 +187,8 @@ pub async fn stop_spectating_game(
     state: State<AppDBState>,
 	payload: Json<DestroyLobbyPayload>,
 ) -> APIResult<Json<Value>> {
-    let mut redisConnection  = state.redis_connection.lock().unwrap();
+    let arc_redis_client = state.context.get_redis_db_client();
+    let mut redisConnection  = arc_redis_client.lock().unwrap();
 
     let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
     if delete_query_result.is_err() {

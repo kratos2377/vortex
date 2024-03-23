@@ -1,12 +1,14 @@
 use std::time::Duration;
 
-use common_error::AppError;
+use axum::http::Error;
 use mongodb::options::ClientOptions;
 use mongodb::Client;
 
+use crate::conf::config_types::MongoDatabaseConfiguration;
 
-pub async fn init_db_client(config: &DatabaseConfiguration) -> Result<Client, AppError> {
-    let mut opt = ClientOptions::parse(config.url.clone()).await?;
+
+pub async fn init_db_client(config: &MongoDatabaseConfiguration) -> Result<Client, Error> {
+    let mut opt = ClientOptions::parse(config.url.clone()).await.unwrap();
 
     // Configure pool
 
@@ -30,5 +32,5 @@ pub async fn init_db_client(config: &DatabaseConfiguration) -> Result<Client, Ap
 
     // Instantiate client
 
-    Ok(Client::with_options(opt)?)
+    Ok(Client::with_options(opt).unwrap())
 }

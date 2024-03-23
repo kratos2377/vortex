@@ -4,11 +4,13 @@ use rdkafka::producer::FutureProducer;
 use redis::Connection;
 use sea_orm::DatabaseConnection;
 
+use crate::context::context::DynContext;
+
 #[derive(Clone)]
 pub struct AppDBState {
     pub conn: DatabaseConnection,
     pub from_email: String,
     pub smtp_key: String,
-    pub redis_connection: Arc<Mutex<Connection>>,
-    pub producer: FutureProducer
+    pub producer: FutureProducer,
+    pub context: DynContext
 }
