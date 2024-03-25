@@ -10,6 +10,7 @@ use mongodb::error::Error;
 use mongodb::options::DeleteOptions;
 use mongodb::options::FindOptions;
 use mongodb::ClientSession;
+use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedHeaders;
 use rdkafka::producer::FutureProducer;
 use rdkafka::producer::FutureRecord;
@@ -67,7 +68,7 @@ pub async fn delete_from_db(
 pub async fn send_to_kafka(
     producer: Arc<FutureProducer>,
     events: &EventList,
-) -> Result<(), Error> {
+) -> Result<(), KafkaError> {
     let events_to_send = &events.events;
     let number_of_events = events_to_send.len();
 
@@ -92,7 +93,7 @@ pub async fn send_to_kafka(
 
             // Create kafka headers with trace_id
             let headers = match trace_id {
-                Some(id) => OwnedHeaders::new_with_capacity(1).add(B3_SINGLE_HEADER, &id),
+                Some(id) =>  OwnedHeaders::default(),
                 _ => OwnedHeaders::default(),
             };
 
@@ -118,7 +119,7 @@ pub async fn send_to_kafka(
 
         match send_result {
             Ok(_) => (),
-            Err(e) => return Err("Error Occured while publishing event"),
+            Err(e) => return Err(e.0.into()),
         }
 
         // Commit kafka transaction
