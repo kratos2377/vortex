@@ -6,15 +6,21 @@ use serde::Deserialize;
 #[allow(unused)]
 pub struct KafkaConfiguration {
     pub broker: BrokerProperties,
-    pub consumer: Vec<ConsumerConfiguration>,
+    pub producer: ProducerProperties,
     pub schema_registry: SchemaRegistryProperties,
-    pub topic: TopicConfiguration,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
 pub struct BrokerProperties {
     pub urls: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+pub struct ProducerProperties {
+    pub client_id: String,
+    pub transactional_id: String,
 }
 
 #[derive(Debug, Deserialize)]
