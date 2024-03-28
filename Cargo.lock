@@ -2042,6 +2042,7 @@ dependencies = [
  "chrono",
  "config",
  "dotenv",
+ "futures",
  "futures-util",
  "jsonwebtoken",
  "lazy-regex",

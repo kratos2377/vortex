@@ -20,6 +20,7 @@ pub mod context;
 pub mod ws_events;
 pub mod utils;
 pub mod conf;
+pub mod mongo;
 pub mod mongo_pool;
 
 #[tokio::main]

@@ -59,7 +59,7 @@ pub fn create_ws_game_events(socket: SocketRef, state: State<Arc<FutureProducer>
     
     socket.on("user-connection-event", move |socket: SocketRef, Data::<String>(msg)| {
         let data: UserConnectionEventPayload = serde_json::from_str(&msg).unwrap();
-        producer_kafka_event(&state.0, "user".to_string() , socket.id.to_string() , data.user_id);
+        produce_kafka_event_for_redis(&state.0, "user".to_string() , socket.id.to_string() , data.user_id);
     });
     
     socket.on("joined-room", |socket: SocketRef , Data::<String>(msg) | {
@@ -109,7 +109,64 @@ pub fn create_ws_game_events(socket: SocketRef, state: State<Arc<FutureProducer>
 
 
 // Publish that user has joined to user friends
-async fn producer_kafka_event(producer: &FutureProducer, topic: String , socket_id: String , user_id: String) -> Result<(), KafkaError> {
+async fn produce_kafka_event_for_redis(producer: &FutureProducer, topic: String , socket_id: String , user_id: String) -> Result<(), KafkaError> {
+    producer.begin_transaction().unwrap();
+
+
+    //Create a future to be published
+    //producer.send(record, Duration::from_secs(10));
+    let user_online_payload = UserKafkaPayload {
+            user_id: user_id,
+            socket_id: socket_id
+    };
+
+    let user_string = serde_json::to_string(&user_online_payload).unwrap();
+
+    // Change partition and key
+    let new_event = Event {
+        _id: Uuid::new_v4().to_string(),
+        topic: topic,
+        partition: 2,
+        key: "random key".into(),
+        payload: user_string.into(),
+        event_name: "user-online".into()
+    };
+
+    let new_event_list = EventList {
+        has_more: false,
+        events: vec![new_event]
+    };
+    let kafka_result = future::try_join_all(new_event_list.events.iter().map(|event| async move {
+
+        let delivery_result = producer
+        .send(
+            FutureRecord::to(&event.topic)
+                    .payload(&event.payload)
+                    .key(&event.key),
+            Duration::from_secs(30),
+        )
+        .await;
+
+    // This will be executed when the result is received.
+  //  println!("Delivery status for message {} received", i);
+    delivery_result
+
+    })
+
+    ).await;
+
+    match kafka_result {
+        Ok(_) => (),
+        Err(e) => return Err(e.0.into()),
+    }
+
+    producer.commit_transaction(Timeout::from(Duration::from_secs(10))).unwrap(); 
+
+    Ok(())  
+}
+
+
+pub async fn produce_kafka_event_for_mongo(producer: &FutureProducer, topic: String , socket_id: String , user_id: String) -> Result<(), KafkaError> {
     producer.begin_transaction().unwrap();
 
 
