@@ -1,0 +1,51 @@
+{
+  "name": "CreateUserGameAvroV1",
+  "type": "record",
+  "fields": [
+    {
+      "name": "identifier",
+      "type": "string"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "description",
+      "type": "string"
+    },
+    {
+      "name": "user_game_event",
+      "type": {
+        "name": "UserGameEventAvro",
+        "type": "record",
+        "fields": [
+          {
+            "name": "user_id",
+            "type": "uuid"
+          },
+          {
+            "name": "user_id",
+            "type": "string"
+          },
+          {
+            "name": "game_id",
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "type": "int"
+          },
+          {
+            "name": "user_move",
+            "type": "string"
+          },
+          {
+            "name": "socket_id",
+            "type": "string"
+          },
+        ]
+      }
+    }
+  ]
+}

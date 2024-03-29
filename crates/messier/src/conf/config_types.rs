@@ -95,3 +95,19 @@ pub struct EmailConfiguration {
 
 
 
+// Impl Methods for structs
+impl TopicConfiguration {
+    pub fn get_mapping(&self, id: &str) -> TopicProperties {
+        let mapping: Vec<TopicProperties> = self
+            .mappings
+            .clone()
+            .into_iter()
+            .filter(|t| t.id == id)
+            .collect();
+
+        mapping
+            .first()
+            .unwrap_or_else(|| panic!("{} topic configuration not found", id))
+            .clone()
+    }
+}

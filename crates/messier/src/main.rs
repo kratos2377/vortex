@@ -7,13 +7,14 @@ use socketioxide::{extract::SocketRef, socket, SocketIo};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
-use crate::{conf::configuration, context::context::ContextImpl, state::AppDBState};
+use crate::{conf::configuration, context::context::ContextImpl, mongo::{event_converter::DynEventConverter, event_dispatcher::EventDispatcher, user_game_converter::UserGameEventConverter}, state::{AppDBState, WebSocketStates}};
 
 
 pub mod errors;
 pub mod controllers;
 pub mod routes;
 pub mod kafka;
+pub mod common;
 pub mod state;
 pub mod constants;
 pub mod context;
@@ -38,9 +39,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let redis_connection = client.get_connection().unwrap(); 
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
 
+    let user_mongo_event_converter: Arc<DynEventConverter> =
+    Arc::new(Box::new(UserGameEventConverter::new(&config.kafka)?));
+
+    //Initializing Event Dispatcher
+    let event_dispatcher = EventDispatcher::new(vec![
+        user_mongo_event_converter,
+    ]);
+
     let context = ContextImpl::new_dyn_context(
         mongo_db_client,
-        Arc::new(Mutex::new(redis_connection))
+        Arc::new(Mutex::new(redis_connection)),
+        Arc::new(event_dispatcher),
 
     );
 
@@ -51,12 +61,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
   
   let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
   let kafka_prod_clone = kafka_producer.clone();
+  let context_clone = context.clone();
   let state = AppDBState {conn: connection , from_email: config.email_config.from_email , smtp_key: config.email_config.smtp_key, context: context, producer: kafka_producer };
-    let (layer, io) = SocketIo::builder().build_layer();
+    let websocket_states = WebSocketStates { producer: kafka_prod_clone , context: context_clone };
+    let (layer, io) = SocketIo::builder().with_state(websocket_states).build_layer();
 
-    io.ns("/", |socket: SocketRef| {
-        ws_events::game_events::create_ws_game_events(socket , axum::extract::State(Arc::new(kafka_prod_clone)))
-    });
+    io.ns("/",   ws_events::game_events::create_ws_game_events);
     // build our application with a route
     let user_auth_routes = routes::user_auth_routes::create_user_routes() ;
     let user_logic_routes = routes::user_logic_routes::create_user_logic_routes();
