@@ -12,17 +12,17 @@ pub const RAW_SCHEMA_CREATE_USER_GAME_EVENT_V1: &str =
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateUserGameEventAvro {
+pub struct CreateUserGameMoveEventAvro {
     pub identifier: String,
     pub name: String,
     pub description: String,
-    pub user_game_event: UserGameEventAvro,
+    pub user_game_move: UserGameMoveAvro,
 }
 
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UserGameEventAvro {
+pub struct UserGameMoveAvro {
     pub id: Uuid,
     pub user_id: String,
     pub game_id: String,

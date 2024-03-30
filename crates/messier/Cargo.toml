@@ -48,3 +48,5 @@ schema_registry_converter = { git = "https://github.com/gklijs/schema_registry_c
 serde_derive = "1.0.197"
 bson = { version = "2.4.0", features = ["uuid-1", "serde_with"] }
 murmur3 = "0.5.2"
+opentelemetry = "0.22.0"
+tracing-opentelemetry = "0.23.0"

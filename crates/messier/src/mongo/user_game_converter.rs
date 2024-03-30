@@ -7,7 +7,7 @@ use schema_registry_converter::{async_impl::avro::AvroEncoder, schema_registry_c
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{common::{schema_create_user_game_event::{CreateUserGameEventAvro, SCHEMA_NAME_CREATE_USER_GAME_EVENT}, schema_key::{IdentifierAvro, KeyAvro}}, conf::config_types::{KafkaConfiguration, TopicProperties}, kafka};
+use crate::{common::{schema_create_user_game_event::{ CreateUserGameMoveEventAvro, SCHEMA_NAME_CREATE_USER_GAME_EVENT}, schema_key::{IdentifierAvro, KeyAvro}}, conf::config_types::{KafkaConfiguration, TopicProperties}, kafka};
 
 use super::{event_converter::EventConverter, event_models::{EventDto, SerializableEventDto}, kafka_event_models::UserGameEvent};
 
@@ -56,7 +56,7 @@ impl<'a> EventConverter for UserGameEventConverter<'a> {
         // Serialize value
         let value_sns = SubjectNameStrategy::RecordNameStrategy(event_type.clone());
         let serialized_value: Vec<u8> = if event_type == *SCHEMA_NAME_CREATE_USER_GAME_EVENT {
-            let create_user_game_avro: CreateUserGameEventAvro =
+            let create_user_game_avro: CreateUserGameMoveEventAvro =
                 user_game_event.clone().into();
             self.avro_encoder
                 .encode_struct(create_user_game_avro, &value_sns)
