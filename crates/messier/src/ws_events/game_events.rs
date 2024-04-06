@@ -61,7 +61,9 @@ pub fn create_ws_game_events(socket: SocketRef) {
     socket.on("user-connection-event",   |socket: SocketRef, Data::<String>(msg), State(WebSocketStates { producer, context } ) | {
         let data: UserConnectionEventPayload = serde_json::from_str(&msg).unwrap();
      
-         produce_kafka_event_for_redis(&producer, "user".to_string() , socket.id.to_string() , data.user_id);
+         async move {
+            produce_kafka_event_for_redis(&producer, "user".to_string() , socket.id.to_string() , data.user_id).await.unwrap();
+         }
     });
     
     socket.on("joined-room", |socket: SocketRef , Data::<String>(msg) | {

@@ -1,22 +1,48 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr, sync::{Arc, Mutex}};
 
 use api::health;
 use axum::{routing::get, Router};
 use conf::config_types::{ConsumerConfiguration, KafkaConfiguration, ServerConfiguration};
-use rdkafka::consumer::StreamConsumer;
+use context::context::{ContextImpl, DynContext};
+use kafka::decoder::AvroRecordDecoder;
+use rdkafka::{consumer::StreamConsumer, message::{BorrowedHeaders, BorrowedMessage, Headers}, Message};
+use socketioxide::SocketIo;
 use tokio::{spawn, task::JoinHandle};
+use tracing::warn;
+
+use crate::{avro::create_user_online_avro::CreateUserOnlineAvro, controllers::user_controller::set_user_online_and_send_it_to_friends, kafka::key_avro::KeyAvro};
 
 
 pub mod kafka;
 pub mod conf;
 pub mod api;
+pub mod context;
+pub mod mongo_pool;
+pub mod avro;
+pub mod controllers;
 
 #[tokio::main]
 async fn main()  {
     let config = conf::configuration::Configuration::load().unwrap();
+
     let mut consumers = kafka::consumer::init_consumers(&config.kafka).unwrap();
+    
+    let avro_decoder = AvroRecordDecoder::new(&config.kafka).unwrap();
+    
+    
+    let client = redis::Client::open(config.redis_url.url).unwrap();
+    let redis_connection = client.get_connection().unwrap(); 
+    let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
+    
+    let (layer, io) = SocketIo::new_svc();
+
+        // io.sockets().unwrap()
+    
+    let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder));
+    
     let user_handle = init_user_kafka_consumer(
-        &config.kafka,
+        context,
+        &config.kafka, 
         consumers
     );
 
@@ -88,6 +114,7 @@ fn init_routing() -> Router {
 
 
 fn init_user_kafka_consumer(
+    context: DynContext,
     config: &KafkaConfiguration,
     kafka_consumers: HashMap<String, StreamConsumer>,
 ) -> JoinHandle<()> {
@@ -96,6 +123,7 @@ fn init_user_kafka_consumer(
 
     for (_ , value) in kafka_consumers.into_iter() {
        let kf_join =  listen(
+            context.clone(),
             config,
             value
         );
@@ -116,27 +144,70 @@ fn init_user_kafka_consumer(
 
 
 pub fn listen(
+    context: DynContext,
     config: &KafkaConfiguration,
     stream_consumer: StreamConsumer,
 ) -> JoinHandle<()> {
     let topic = get_user_topic_name(config);
     // Start listener
     tokio::spawn(async move {
-        do_listen( &stream_consumer, topic).await;
+        do_listen( context, &stream_consumer, topic).await;
     })
 }
 
 pub async fn do_listen(
+    context: DynContext,
     stream_consumer: &StreamConsumer,
     user_topic: String,
 ) {
 
+    let decoder = context.get_avro_decoder().clone();
+
     loop {
         match stream_consumer.recv().await {
-            Err(e) =>println!("NEW ERROR OCCURED, times 1, {:?}" , e),
+            Err(e) => warn!("Error: {}", e),
             Ok(message) => {
-               println!("THE NEW MESSAGE HAS BEEN REVCIEVED");
-               println!("{:?}", message)
+ 
+                    let topic = message.topic();
+                    assert_eq!(
+                        topic, user_topic,
+                        "Message from wrong topic detected. Stopped processing."
+                    );
+
+
+
+                    let key_result = decoder
+                        .decode(message.key())
+                        .await
+                        .expect("Couldn't decode avro message");
+
+                    let key = apache_avro::from_value::<KeyAvro>(&key_result.value)
+                        .expect("Couldn't deserialize KeyAvro");
+
+                    let payload_result = decoder
+                        .decode(message.payload())
+                        .await
+                        .expect("Couldn't decode payload");
+
+                        // Data type should tell what kind of event is recieved
+                    match key.identifier.data_type.as_str() {
+                            "set-user-online" => {
+                                
+                    let payload = apache_avro::from_value::<CreateUserOnlineAvro>(&payload_result.value)
+                    .expect("Couldn't deserialize CreateUserOnlineAvro");
+
+                        
+                    set_user_online_and_send_it_to_friends(context.clone() , payload);
+                            },
+
+                            "user-game-move-event" => {
+
+                            },
+
+                            _ => {}
+                    }
+
+                
             }
         }
     }
@@ -163,5 +234,3 @@ fn get_user_topic_name(config: &KafkaConfiguration) -> String {
 
     topic
 }
-
-

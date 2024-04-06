@@ -55,7 +55,7 @@ fn init_consumer(
     // Convert topic names into &str
     let topics: Vec<&str> = topics.iter().map(|t| &**t).collect();
 
-    println!("THE TOPICS LIST IS: {:?}", topics);
+    // println!("THE TOPICS LIST IS: {:?}", topics);
     // Subscribe to the specified topic names
     consumer.subscribe(&topics).unwrap();
 
