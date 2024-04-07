@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
         mongo_db_client,
         Arc::new(Mutex::new(redis_connection)),
         Arc::new(event_dispatcher),
-
+        connection.clone()
     );
 
    // io.ns("/", ws_events::user_events::create_ws_user_events);

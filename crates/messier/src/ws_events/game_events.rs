@@ -1,6 +1,7 @@
 
 use futures::FutureExt;
 use futures_util::future;
+use orion::events::ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use serde::{Deserialize, Serialize};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
@@ -8,53 +9,8 @@ use tracing::info;
 use uuid::Uuid;
 use std::{sync::{Arc, Mutex}, time::Duration};
 
-use crate::{common::schema_create_user_game_event::SCHEMA_NAME_CREATE_USER_GAME_EVENT, context::context::DynContext, kafka::model::{Event, EventList}, mongo::{kafka_event_models::{UserGameEvent, UserGameMove}, send_kafka_events_to_mongo::create_and_send_kafka_events, transaction::transactional}, state::WebSocketStates};
-#[derive(Deserialize , Serialize)]
-pub struct JoinedRoomPayload {
-    pub user_id: String,
-    pub username: String,
-    pub game_id: String,
-}
+use crate::{ event_producer::{game_events_producer::{send_game_events, GameEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, mongo::{kafka_event_models::{UserGameEvent, UserGameMove}, send_kafka_events_to_mongo::create_and_send_kafka_events, transaction::transactional}, state::WebSocketStates};
 
-#[derive(Deserialize , Serialize)]
-pub struct LeavedRoomPayload {
-    pub user_id: String,
-    pub username: String,
-    pub game_id: String,
-}
-
-#[derive(Clone , Deserialize , Serialize)]
-pub struct GameEventPayload {
-    pub user_id: String,
-    pub game_event: String,
-    pub game_id: String
-}
-
-#[derive(Deserialize , Serialize)]
-pub struct GameStartPayload {
-    pub admin_id: String,
-    pub game_name: String,
-    pub game_id: String
-}
-
-#[derive(Deserialize , Serialize)]
-pub struct GameMessagePayload {
-    pub user_id: String,
-    pub username: String,
-    pub message: String,
-    pub game_id: String
-}
-
-#[derive(Deserialize , Serialize)]
-pub struct UserConnectionEventPayload {
-    pub user_id: String,
-}
-
-#[derive(Deserialize , Serialize)]
-pub struct UserKafkaPayload {
-    pub user_id: String,
-    pub socket_id: String,
-}
 
 pub fn create_ws_game_events(socket: SocketRef) {
     
@@ -63,20 +19,29 @@ pub fn create_ws_game_events(socket: SocketRef) {
      
          async move {
             produce_kafka_event_for_redis(&producer, "user".to_string() , socket.id.to_string() , data.user_id).await.unwrap();
+            send_event_for_user_topic(&producer, &context, "user-online-even".to_string() ,msg).await;
          }
     });
     
-    socket.on("joined-room", |socket: SocketRef , Data::<String>(msg) | {
+    socket.on("joined-room", |socket: SocketRef , Data::<String>(msg), State(WebSocketStates { producer, context } ) | {
         let data: JoinedRoomPayload = serde_json::from_str(&msg).unwrap();
 
-      let _ =   socket.broadcast().to(data.game_id).emit("new-user-joined" , msg);
+      let _ =   socket.broadcast().to(data.game_id).emit("new-user-joined" , msg.clone());
+
+      async move  {
+        send_event_for_user_topic(&producer, &context, "user-joined-room".to_string() ,msg).await;
+      }
     });
 
 
-    socket.on("leaved-room", |socket: SocketRef ,  Data::<String>(msg)| {
+    socket.on("leaved-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| {
         let data: LeavedRoomPayload = serde_json::from_str(&msg).unwrap();
 
-        let _ = socket.broadcast().to(data.game_id).emit("user-left-room" , msg);
+        let _ = socket.broadcast().to(data.game_id).emit("user-left-room" , msg.clone());
+
+        async move {
+            send_event_for_user_topic(&producer, &context, "user-left-room".to_string() ,msg).await;
+         }
     });
 
 
@@ -85,8 +50,9 @@ pub fn create_ws_game_events(socket: SocketRef) {
         let data_clone = data.clone();
         let  _ =  socket.broadcast().to(data.game_id).emit("send-user-game-event" , msg);
       
-        
-        produce_kafka_event_for_mongo(&context , data_clone , socket.id.to_string());
+        async move {
+        send_game_events(&context , data_clone , socket.id.to_string()).await.unwrap();
+        }
 
     });
 
@@ -171,55 +137,4 @@ async fn produce_kafka_event_for_redis(producer: &FutureProducer, topic: String 
     producer.commit_transaction(Timeout::from(Duration::from_secs(10))).unwrap(); 
 
     Ok(())  
-}
-
-
-pub async fn produce_kafka_event_for_mongo(
-   context: &DynContext,
-   game_event_payload: GameEventPayload,
-   socket_id: String,
-) -> Result<(), KafkaError> {
-
-    let input = UserGameEvent {
-        id: Uuid::new_v4(),
-        version: 1,
-        name: game_event_payload.user_id.clone(),
-        description: "user_game_move".into(),
-        user_game_move: UserGameMove {
-            id: Uuid::new_v4(),
-            game_id: game_event_payload.game_id,
-            user_id: game_event_payload.user_id,
-            version: 1,
-            user_move: game_event_payload.game_event,
-            socket_id,
-            
-        }
-
-
-    };
-
-
-    // Start transaction and execute query
-    let save_user_game_move_event = transactional(context.get_mongo_db_client(), |db_session| {
-        let event_dispatcher = context.get_event_dispatcher();
-
-        let user_ws_event: UserGameEvent  = input.clone().into();
-
-        async move {
-
-            create_and_send_kafka_events(
-                db_session,
-                event_dispatcher,
-                Box::new(user_ws_event.clone()),
-                SCHEMA_NAME_CREATE_USER_GAME_EVENT,
-            )
-            .await.unwrap();
-            Ok(user_ws_event)
-        }
-        .boxed()
-    })
-    .await.unwrap();
-
-    Ok(())
-
 }
