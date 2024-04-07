@@ -2,11 +2,10 @@ use std::{collections::HashMap, net::SocketAddr, sync::{Arc, Mutex}};
 
 use api::health;
 use axum::{routing::get, Router};
-use conf::config_types::{ConsumerConfiguration, KafkaConfiguration, ServerConfiguration};
+use conf::{config_types::{ConsumerConfiguration, KafkaConfiguration, ServerConfiguration}, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
 use rdkafka::{consumer::StreamConsumer, message::{BorrowedHeaders, BorrowedMessage, Headers}, Message};
-use socketioxide::SocketIo;
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
 
@@ -20,6 +19,10 @@ pub mod context;
 pub mod mongo_pool;
 pub mod avro;
 pub mod controllers;
+pub mod mqtt_client;
+
+
+extern crate paho_mqtt as mqtt;
 
 #[tokio::main]
 async fn main()  {
@@ -30,24 +33,21 @@ async fn main()  {
     let avro_decoder = AvroRecordDecoder::new(&config.kafka).unwrap();
     
     
-    let client = redis::Client::open(config.redis_url.url).unwrap();
+    let client = redis::Client::open(config.redis_url.url.clone()).unwrap();
     let redis_connection = client.get_connection().unwrap(); 
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
     
-    let (layer, io) = SocketIo::new_svc();
-
-        // io.sockets().unwrap()
     
     let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder));
     
-    let user_handle = init_user_kafka_consumer(
+    let user_and_game_handles = init_user_and_game_kafka_consumer(
         context,
-        &config.kafka, 
+        &config, 
         consumers
     );
 
     start_web_server(&config.server, vec![
-        user_handle,
+        user_and_game_handles,
     ])
     .await;
 
@@ -113,19 +113,20 @@ fn init_routing() -> Router {
 }
 
 
-fn init_user_kafka_consumer(
+fn init_user_and_game_kafka_consumer(
     context: DynContext,
-    config: &KafkaConfiguration,
+    config: &Configuration,
     kafka_consumers: HashMap<String, StreamConsumer>,
 ) -> JoinHandle<()> {
 
     let mut kafka_joins: Vec<JoinHandle<()>> = vec![];
 
-    for (_ , value) in kafka_consumers.into_iter() {
+    for (key_topic , value) in kafka_consumers.into_iter() {
        let kf_join =  listen(
             context.clone(),
             config,
-            value
+            value,
+            key_topic
         );
 
         kafka_joins.push(kf_join);
@@ -145,13 +146,16 @@ fn init_user_kafka_consumer(
 
 pub fn listen(
     context: DynContext,
-    config: &KafkaConfiguration,
+    config: &Configuration,
     stream_consumer: StreamConsumer,
+    key_topic: String,
 ) -> JoinHandle<()> {
-    let topic = get_user_topic_name(config);
+    let topic = key_topic.clone();
+
+    let cli = mqtt_client::create_mqtt_client_for_kafka_consumer(&config.mqtt, topic.clone());
     // Start listener
     tokio::spawn(async move {
-        do_listen( context, &stream_consumer, topic).await;
+        do_listen( context, &stream_consumer, topic , &cli).await;
     })
 }
 
@@ -159,6 +163,7 @@ pub async fn do_listen(
     context: DynContext,
     stream_consumer: &StreamConsumer,
     user_topic: String,
+    cli: &mqtt::Client
 ) {
 
     let decoder = context.get_avro_decoder().clone();
@@ -169,11 +174,6 @@ pub async fn do_listen(
             Ok(message) => {
  
                     let topic = message.topic();
-                    assert_eq!(
-                        topic, user_topic,
-                        "Message from wrong topic detected. Stopped processing."
-                    );
-
 
 
                     let key_result = decoder
@@ -211,26 +211,4 @@ pub async fn do_listen(
             }
         }
     }
-}
-
-
-fn get_user_topic_name(config: &KafkaConfiguration) -> String {
-    // Get consumer configuration
-    let consumer_config: Vec<&ConsumerConfiguration> = config
-        .consumer
-        .iter()
-        .filter(|c| c.id.clone() == "user" || c.id.clone() == "game")
-        .collect();
-
-    // Get topic name
-    let topic = consumer_config
-        .first()
-        .expect("user consumer configuration not found")
-        .topic
-        .clone()
-        .first()
-        .expect("user topic not found in consumer configuration")
-        .clone();
-
-    topic
 }

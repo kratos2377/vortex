@@ -1,11 +1,16 @@
-use crate::{errors::{self, Error}, state::{AppDBState}};
+use std::str::FromStr;
+
+use crate::{context, errors::{self, Error}, state::AppDBState};
 use axum::{extract::{ State}, response::Response, Json};
+use bson::{doc, Document};
+use futures::TryStreamExt;
+use orion::models::{game_model::Game, user_game_relation_model::UserGameRelation};
 use redis::{Commands, RedisResult};
 use serde_json::{json, Value};
 use errors::Result as APIResult;
 use uuid::Uuid;
-
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, JoinLobbyPayload, SpectateGamePayload, VerifyGameStatusPayload};
+use bson::Uuid as BsonUuid;
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -162,54 +167,99 @@ pub async fn destroy_lobby_and_game(
 	Ok(body)
 }
 
-pub async fn start_spectating_game(
+
+pub async fn get_ongoing_games_for_user(
     state: State<AppDBState>,
-	payload: Json<SpectateGamePayload>,
+    payload: Json<GetUsersOngoingGamesPayload>
 ) -> APIResult<Json<Value>> {
-    let arc_redis_client = state.context.get_redis_db_client();
-    let mut redisConnection  = arc_redis_client.lock().unwrap();
+    if  payload.user_friends_ids.is_empty() {
+        return Err(Error::MissingParamsError)
+    }
+
+    //Database name will change 
+    let mongo_db = state.context.get_mongo_db_client().database("mydb");
+
+    let user_collection = mongo_db.collection::<UserGameRelation>("users");
+    let game_collection = mongo_db.collection::<Game>("games");
+    let mut game_vec_results: Vec<GetUsersOngoingGamesResponseModel> = vec![];
+    for user_id in payload.user_friends_ids.iter() {
+        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(user_id).unwrap() }, None).await.unwrap();
+        let res: Vec<UserGameRelation> = cursor.try_collect().await.unwrap();
+
+        if let Some(game_id) = &res.get(0).unwrap().game_id {
+
+            let game_cursor = game_collection.find(doc! { "id": BsonUuid::parse_str(game_id).unwrap() }, None).await.unwrap();
+            let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
+            let new_game_res = game_res.get(0).unwrap();
+            let new_game = GetUsersOngoingGamesResponseModel {
+                game_id: new_game_res.id,
+                game_type: new_game_res.game_type.clone(),
+                is_staked: new_game_res.is_staked,
+                total_money_staked: 0.0,
+            };
+
+            game_vec_results.push(new_game);
+        }
+
+    }
 
     
-    let result: RedisResult<()> =  redisConnection.hset(&payload.game_id, &payload.user_id, &payload.socket_id) ;
 
-    if result.is_err() {
-        return Err(Error::SpectateGameJoinError)
+    let body = Json(json!({
+		"result": {
+			"success": true,
+            "games": game_vec_results
+		}
+	}));
+
+	Ok(body)
+
+}
+
+
+pub async fn get_current_state_of_game(
+    state: State<AppDBState>,
+    payload: Json<GetGameCurrentStatePayload>
+) -> APIResult<Json<Value>> {
+    if  payload.game_id.to_string() == "" {
+        return Err(Error::MissingParamsError)
     }
+
+    //Database name will change 
+    let mongo_db = state.context.get_mongo_db_client().database("mydb");
+
+    let game_collection = mongo_db.collection::<Game>("games");
+
+    let game_cursor = game_collection.find(doc! { "id": payload.game_id }, None).await.unwrap();
+    let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
+    let game_res = game_res.get(0).unwrap();
+
+
+    let game_current_state = if game_res.name == "chess" {
+        &game_res.current_state
+    } else {
+        // Change this to poker state later
+        &game_res.current_state
+    };
+
 
 
     let body = Json(json!({
 		"result": {
-			"success": true
+			"success": true,
+            "game_state": game_current_state
 		}
 	}));
 
 	Ok(body)
 }
 
-pub async fn stop_spectating_game(
+
+
+pub async fn stake_in_game(
     state: State<AppDBState>,
-	payload: Json<SpectateGamePayload>,
+    payload: Json<GetGameCurrentStatePayload>
 ) -> APIResult<Json<Value>> {
-    let arc_redis_client = state.context.get_redis_db_client();
-    let mut redisConnection  = arc_redis_client.lock().unwrap();
-
-    
-    let result: RedisResult<()> =  redisConnection.hdel(&payload.game_id, &payload.user_id) ;
-
-    if result.is_err() {
-        return Err(Error::SpectateGameLeaveError)
-    }
-
-
-    let body = Json(json!({
-		"result": {
-			"success": true
-		}
-	}));
-
-	Ok(body)
+    todo!()
 }
-
-
-
 

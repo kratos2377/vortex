@@ -225,8 +225,7 @@ pub async fn delete_wallet_address(
 }
 
 
-#[debug_handler]
-pub async fn get_online_friends(
+pub async fn get_all_users_friends(
     State(state): State<AppDBState>,
 	Json(payload): Json<GetOnlineFriendsPayload>,
 ) -> APIResult<Json<Value>> {
@@ -263,18 +262,27 @@ pub async fn get_online_friends(
             let mut redisConnection  = arc_redis_client.lock().unwrap();
             let does_friend_key_exist_in_redis: RedisResult<()> = redisConnection.hkeys(user_type_details.id.to_string().clone());
 
-            if does_friend_key_exist_in_redis.is_err() {
-                continue;
-            }
+            let online_friend_response=  if does_friend_key_exist_in_redis.is_err() {
+                GetOnlineFriendsResponseModel {
+                    user_id: user_type_details.id.to_string(),
+                    username: user_type_details.username,
+                    first_name: user_type_details.first_name,
+                    last_name: user_type_details.last_name,
+                    is_user_online: false,
+                }
+            } else {
+                GetOnlineFriendsResponseModel {
+                    user_id: user_type_details.id.to_string(),
+                    username: user_type_details.username,
+                    first_name: user_type_details.first_name,
+                    last_name: user_type_details.last_name,
+                    is_user_online: true,
+                }
+            };
 
             
 
-            let online_friend_response = GetOnlineFriendsResponseModel {
-                user_id: user_type_details.id.to_string(),
-                username: user_type_details.username,
-                first_name: user_type_details.first_name,
-                last_name: user_type_details.last_name,
-            };
+           
 
             results_resp.push(online_friend_response);
      

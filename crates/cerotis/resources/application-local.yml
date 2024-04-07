@@ -1,0 +1,49 @@
+database:
+  url: mongodb://localhost:27017/accommodation-service?replicaSet=replica-set-1
+
+kafka:
+  broker:
+    urls: localhost:9092
+  consumer:
+    - id: user
+      topic:
+        - user
+      client_id: client.id
+      group_id: group.id
+    - id: game
+      topic:
+        - game
+      client_id: client.id
+      group_id: group.id
+  producer:
+    client_id:  client.id
+    transactional_id: transactional.id
+  schema_registry:
+    url: http://localhost:8081
+  topic:
+    mappings:
+      - id: user
+        topic_name: user
+        partitions: 2
+      - id: game
+        topic_name: game
+        partitions: 2
+
+mqtt:
+  dflt_broker: "tcp://127.0.0.1:1883"
+  dflt_client: "event_subscriptions_"
+  dflt_topic_user:
+    - "user_events/+"
+  dflt_qos_user:
+    - 0
+  dflt_topic_game:
+    - "game_events/+"
+  dflt_qos_game:
+    - 1
+
+redis_url:
+  url: "redis_url"
+
+
+
+

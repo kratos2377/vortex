@@ -45,14 +45,6 @@ pub struct WebsocketPayload {
 }
 
 
-#[derive(Deserialize)]
-pub struct SpectateGamePayload {
-    pub user_id: String,
-    pub game_id: String,
-    pub socket_id: String,
-}
-
-
 // User Auth Payloads
 #[derive(Clone, Debug, Deserialize)]
 pub struct LoginPayload {
@@ -143,7 +135,30 @@ pub struct GetOnlineFriendsPayload {
 #[derive( Clone, Debug, Deserialize , Serialize)]
 pub struct GetOnlineFriendsResponseModel {
    pub user_id: String,
+   pub is_user_online: bool,
    pub username: String,
    pub first_name: String,
    pub last_name: String,
 }
+
+
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct GetUsersOngoingGamesPayload {
+    pub user_friends_ids: Vec<String>,
+}
+
+
+
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct GetUsersOngoingGamesResponseModel {
+   pub game_id: Uuid,
+   pub game_type: String,
+   pub is_staked: bool,
+   pub total_money_staked: f64,
+}
+
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct GetGameCurrentStatePayload {
+   pub game_id: Uuid,
+}
+
