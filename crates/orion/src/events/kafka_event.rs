@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 
 
@@ -24,6 +25,7 @@ pub struct UserOnlineKafkaEvent {
 
 #[derive(Clone , Serialize , Deserialize)]
 pub struct UserFriendRequestKafkaEvent {
+    pub friend_request_id: Uuid,
     pub user_who_send_request_id: String,
     pub user_who_send_request_username: String,
     pub user_who_we_are_sending_event: String,
@@ -35,5 +37,6 @@ pub struct UserGameInviteKafkaEvent {
     pub user_who_send_request_username: String,
     pub user_who_we_are_sending_event: String,
     pub game_id: String,
+    pub game_name: String
 }
 

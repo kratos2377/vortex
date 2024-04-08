@@ -1,8 +1,11 @@
 use std::{str::FromStr, sync::MutexGuard};
 
-use crate::errors::Error;
+use crate::event_producer::user_events_producer::send_event_for_user_topic;
+use crate::{errors::Error, event_producer::user_events_producer::create_friend_request_event};
 use crate::errors;
 use axum_macros::debug_handler;
+use orion::constants::FRIEND_REQUEST_EVENT;
+use orion::events::kafka_event::UserFriendRequestKafkaEvent;
 use redis::{Commands, Connection, RedisError, RedisResult};
 use ton::models::{self, users, users_wallet_keys};
 use crate::state::AppDBState;
@@ -26,7 +29,7 @@ pub async fn send_request(
     state: State<AppDBState>,
 	payload: Json<SendRequestPayload>,
 ) -> APIResult<Json<Value>> {
-    if &payload.user_recieved_id == "" || &payload.user_sent_id == "" {
+    if &payload.user_recieved_id == "" || &payload.user_sent_id == "" || &payload.user_send_username == "" {
         return Err(Error::MissingParamsError);
     }
 
@@ -36,6 +39,15 @@ pub async fn send_request(
         user_recieved_id: Set(Uuid::from_str(&payload.user_recieved_id).unwrap()),
         user_sent_id: Set(Uuid::from_str(&payload.user_sent_id).unwrap()),
     };
+
+    let kafka_event = UserFriendRequestKafkaEvent {
+        friend_request_id: new_request_id.clone(),
+        user_who_send_request_id: payload.user_sent_id.clone(),
+        user_who_send_request_username: payload.user_send_username.clone(),
+        user_who_we_are_sending_event: payload.user_recieved_id.clone(),
+    };
+    let friend_request_kafka_event = serde_json::to_string(&kafka_event).unwrap();
+    ;let _ = send_event_for_user_topic(&state.producer,&state.context , FRIEND_REQUEST_EVENT.to_string() , friend_request_kafka_event ).await.unwrap();
 
     let _result = new_friend_request_relation.save(&state.conn).await.unwrap();
 

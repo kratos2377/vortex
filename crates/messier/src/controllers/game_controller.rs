@@ -1,16 +1,16 @@
 use std::str::FromStr;
 
-use crate::{context, errors::{self, Error}, state::AppDBState};
+use crate::{context, errors::{self, Error}, event_producer::user_events_producer::send_event_for_user_topic, state::AppDBState};
 use axum::{extract::{ State}, response::Response, Json};
 use bson::{doc, Document};
 use futures::TryStreamExt;
-use orion::models::{game_model::Game, user_game_relation_model::UserGameRelation};
+use orion::{constants::GAME_INVITE_EVENT, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
 use redis::{Commands, RedisResult};
 use serde_json::{json, Value};
 use errors::Result as APIResult;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, SendGameEventAPIPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -64,6 +64,40 @@ pub async fn join_lobby(
 
     if create_result.is_err() {
         return Err(Error::CreateLobbyError)
+    }
+
+    let body = Json(json!({
+		"result": {
+			"success": true
+		}
+	}));
+
+	Ok(body)
+
+}
+
+
+pub async fn send_game_invite(
+    state: State<AppDBState>,
+	payload: Json<SendGameEventAPIPayload>,
+) -> APIResult<Json<Value>> {
+
+    if &payload.game_id == "" || &payload.game_name == "" || payload.user_receiving_id == "" || payload.user_sending_id == "" || payload.user_sending_username == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    let kafka_event = UserGameInviteKafkaEvent {
+        user_who_send_request_id: payload.user_sending_id.clone(),
+        user_who_send_request_username: payload.user_sending_username.clone(),
+        user_who_we_are_sending_event: payload.user_receiving_id.clone(),
+        game_id: payload.game_id.clone(),
+        game_name: payload.game_name.clone(),
+
+    };
+    let res = send_event_for_user_topic(&state.producer , &state.context , GAME_INVITE_EVENT.to_string() , serde_json::to_string(&kafka_event).unwrap() ).await;
+
+    if res.is_err() {
+        return Err(Error::GameInviteSendError)
     }
 
     let body = Json(json!({

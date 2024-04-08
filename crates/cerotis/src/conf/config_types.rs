@@ -73,7 +73,7 @@ pub struct MongoDatabasePoolProperties {
     pub max: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize , Clone)]
 #[allow(unused)]
 pub struct PostgresDatabaseUrl {
     pub url: String,
@@ -95,5 +95,3 @@ pub struct MQTTConfiguration {
     pub dflt_topic_game: Vec<String>,
     pub dflt_qos_game: Vec<i32>
 }
-
-

@@ -1,7 +1,7 @@
 
 use futures::FutureExt;
 use futures_util::future;
-use orion::events::ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload};
+use orion::{constants::{USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload}};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use serde::{Deserialize, Serialize};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
@@ -19,7 +19,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
      
          async move {
             produce_kafka_event_for_redis(&producer, "user".to_string() , socket.id.to_string() , data.user_id).await.unwrap();
-            send_event_for_user_topic(&producer, &context, "user-online-even".to_string() ,msg).await;
+            send_event_for_user_topic(&producer, &context, USER_ONLINE_EVENT.to_string() ,msg).await.unwrap();
          }
     });
     
@@ -29,7 +29,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
       let _ =   socket.broadcast().to(data.game_id).emit("new-user-joined" , msg.clone());
 
       async move  {
-        send_event_for_user_topic(&producer, &context, "user-joined-room".to_string() ,msg).await;
+        send_event_for_user_topic(&producer, &context, USER_JOINED_ROOM.to_string() ,msg).await.unwrap();
       }
     });
 
@@ -40,7 +40,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
         let _ = socket.broadcast().to(data.game_id).emit("user-left-room" , msg.clone());
 
         async move {
-            send_event_for_user_topic(&producer, &context, "user-left-room".to_string() ,msg).await;
+            send_event_for_user_topic(&producer, &context, USER_LEFT_ROOM.to_string() ,msg).await.unwrap();
          }
     });
 

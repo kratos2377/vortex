@@ -24,6 +24,17 @@ pub struct VerifyGameStatusPayload {
 
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct SendGameEventAPIPayload {
+    pub game_id: String,
+    pub game_name: String,
+    pub user_sending_username: String,
+    pub user_sending_id: String,
+    pub user_receiving_id: String,
+}
+
+
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct DestroyLobbyPayload {
     pub game_id: String,
 }
@@ -93,6 +104,7 @@ pub struct ResponseUser {
 pub struct SendRequestPayload {
  pub user_sent_id: String,
  pub user_recieved_id: String,
+ pub user_send_username: String,
 }
 
 #[derive( Clone, Debug, Deserialize)]

@@ -28,7 +28,7 @@ pub mod mongo_pool;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let config = configuration::Configuration::load().unwrap();
-    dotenv().ok();
+  //  dotenv().ok();
 
     //Connect with database
     let connection = match Database::connect(config.postgres_url.url).await {

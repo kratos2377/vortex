@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use orion::events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, RedisResult};
 use sea_orm::TryIntoModel;
@@ -31,21 +31,21 @@ pub async fn send_event_for_user_topic(
     event_name: String,
     payload: String
 ) -> Result<(), KafkaError> {
-    let kafka_events: Vec<KafkaGeneralEvent> = match event_name.as_ref() {
-        "user-online-event" => {
+    let kafka_events: Vec<KafkaGeneralEvent> = match event_name.as_str() {
+        USER_ONLINE_EVENT => {
             create_user_online_events(context , payload).await
         },
-        "friend-request-event" => {
+        FRIEND_REQUEST_EVENT => {
             create_friend_request_event(context , payload).await
         },
-        "game-invite-event" => {
+        GAME_INVITE_EVENT => {
             create_game_invite_event(context , payload).await
         },
-        "user-joined-room" => {
+        USER_JOINED_ROOM => {
             create_user_joined_room_event(context , payload).await
         },
 
-        "user-left-room" => {
+        USER_LEFT_ROOM => {
             create_user_leaved_room_event(context , payload).await
         },
 

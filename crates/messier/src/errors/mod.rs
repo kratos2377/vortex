@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use opentelemetry::trace::Status;
 use serde::Serialize;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -24,6 +25,7 @@ pub enum Error {
 	GameCannotBeStarted,
 	RedisUnwrapError,
 	LobbyFull,
+	GameInviteSendError,
 	WalletAddressSaveError,
 	ErrorWhileMakingRelation,
 	SpectateGameJoinError,
@@ -107,6 +109,9 @@ impl Error {
 			Self::SpectateGameJoinError => (StatusCode::BAD_REQUEST , ClientError::SPECTATE_GAME_JOIN_ERROR),
 			Self::SpectateGameLeaveError => (StatusCode::BAD_REQUEST , ClientError::SPECTATE_GAME_LEAVE_ERROR),
 
+			//Game Invite Error
+			Self::GameInviteSendError => (StatusCode::BAD_REQUEST, ClientError::GAME_INVITE_SEND_ERROR),
+
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -148,6 +153,7 @@ pub enum ClientError {
 	GAME_CANNOT_BE_STARTED,
 	REDIS_UNWRAP_ERROR,
 	LOBBY_FULL_ERROR,
+	GAME_INVITE_SEND_ERROR,
 	ERROR_WHILE_MAKING_RELATION,
 	WALLET_ADDRESS_SAVE_ERROR,
 	SPECTATE_GAME_JOIN_ERROR,

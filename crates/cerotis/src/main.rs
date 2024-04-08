@@ -5,7 +5,9 @@ use axum::{routing::get, Router};
 use conf::{config_types::{ConsumerConfiguration, KafkaConfiguration, ServerConfiguration}, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
+use orion::constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT};
 use rdkafka::{consumer::StreamConsumer, message::{BorrowedHeaders, BorrowedMessage, Headers}, Message};
+use sea_orm::Database;
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
 
@@ -20,6 +22,7 @@ pub mod mongo_pool;
 pub mod avro;
 pub mod controllers;
 pub mod mqtt_client;
+pub mod mqtt_events;
 
 
 extern crate paho_mqtt as mqtt;
@@ -32,13 +35,17 @@ async fn main()  {
     
     let avro_decoder = AvroRecordDecoder::new(&config.kafka).unwrap();
     
+    let connection = match Database::connect(config.postgres_url.url.clone()).await {
+        Ok(connection) => connection,
+        Err(e) => panic!("{:?}",e)
+    };
     
     let client = redis::Client::open(config.redis_url.url.clone()).unwrap();
     let redis_connection = client.get_connection().unwrap(); 
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
     
     
-    let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder));
+    let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder) , connection);
     
     let user_and_game_handles = init_user_and_game_kafka_consumer(
         context,
@@ -162,50 +169,50 @@ pub fn listen(
 pub async fn do_listen(
     context: DynContext,
     stream_consumer: &StreamConsumer,
-    user_topic: String,
+    topic_name: String,
     cli: &mqtt::Client
 ) {
 
-    let decoder = context.get_avro_decoder().clone();
 
     loop {
         match stream_consumer.recv().await {
             Err(e) => warn!("Error: {}", e),
             Ok(message) => {
  
-                    let topic = message.topic();
+            let topic = message.topic();
+
+            if topic.to_string() == topic_name {
+                
+             if let Some(key_name) = message.key() {
+                let key_name_string = String::from_utf8(key_name.to_vec()).unwrap();
+
+                match key_name_string.as_str() {
+                    USER_ONLINE_EVENT => {
+
+                    },
+
+                    USER_JOINED_ROOM => {
+
+                    },
+
+                    USER_LEFT_ROOM => {
+
+                    },
+
+                    FRIEND_REQUEST_EVENT => {
+
+                    },
+
+                    GAME_INVITE_EVENT => {
+
+                    },
+
+                    _ => {}
+                }
+             }
 
 
-                    let key_result = decoder
-                        .decode(message.key())
-                        .await
-                        .expect("Couldn't decode avro message");
-
-                    let key = apache_avro::from_value::<KeyAvro>(&key_result.value)
-                        .expect("Couldn't deserialize KeyAvro");
-
-                    let payload_result = decoder
-                        .decode(message.payload())
-                        .await
-                        .expect("Couldn't decode payload");
-
-                        // Data type should tell what kind of event is recieved
-                    match key.identifier.data_type.as_str() {
-                            "set-user-online" => {
-                                
-                    let payload = apache_avro::from_value::<CreateUserOnlineAvro>(&payload_result.value)
-                    .expect("Couldn't deserialize CreateUserOnlineAvro");
-
-                        
-                    set_user_online_and_send_it_to_friends(context.clone() , payload);
-                            },
-
-                            "user-game-move-event" => {
-
-                            },
-
-                            _ => {}
-                    }
+            }
 
                 
             }
