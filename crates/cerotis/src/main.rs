@@ -2,16 +2,15 @@ use std::{collections::HashMap, net::SocketAddr, sync::{Arc, Mutex}};
 
 use api::health;
 use axum::{routing::get, Router};
-use conf::{config_types::{ConsumerConfiguration, KafkaConfiguration, ServerConfiguration}, configuration::Configuration};
+use conf::{config_types::{ ServerConfiguration}, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
+use mqtt_events::user_mqtt_events::{send_game_invite_room_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_online_event_event_mqtt};
 use orion::constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT};
-use rdkafka::{consumer::StreamConsumer, message::{BorrowedHeaders, BorrowedMessage, Headers}, Message};
+use rdkafka::{consumer::StreamConsumer, Message};
 use sea_orm::Database;
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
-
-use crate::{avro::create_user_online_avro::CreateUserOnlineAvro, controllers::user_controller::set_user_online_and_send_it_to_friends, kafka::key_avro::KeyAvro};
 
 
 pub mod kafka;
@@ -185,26 +184,26 @@ pub async fn do_listen(
                 
              if let Some(key_name) = message.key() {
                 let key_name_string = String::from_utf8(key_name.to_vec()).unwrap();
-
+                let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
                 match key_name_string.as_str() {
                     USER_ONLINE_EVENT => {
-
+                            send_user_online_event_event_mqtt(cli , payload).await
                     },
 
                     USER_JOINED_ROOM => {
-
+                            send_user_joined_room_event_mqtt(cli , payload).await
                     },
 
                     USER_LEFT_ROOM => {
-
+                        send_user_left_room_event_mqtt(cli , payload).await
                     },
 
                     FRIEND_REQUEST_EVENT => {
-
+                        send_user_friend_request_event_mqtt(cli , payload).await
                     },
 
                     GAME_INVITE_EVENT => {
-
+                        send_game_invite_room_event_mqtt(cli , payload).await
                     },
 
                     _ => {}

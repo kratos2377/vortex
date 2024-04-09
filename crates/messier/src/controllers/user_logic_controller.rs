@@ -47,7 +47,7 @@ pub async fn send_request(
         user_who_we_are_sending_event: payload.user_recieved_id.clone(),
     };
     let friend_request_kafka_event = serde_json::to_string(&kafka_event).unwrap();
-    ;let _ = send_event_for_user_topic(&state.producer,&state.context , FRIEND_REQUEST_EVENT.to_string() , friend_request_kafka_event ).await.unwrap();
+    let _ = send_event_for_user_topic(&state.producer,&state.context , FRIEND_REQUEST_EVENT.to_string() , friend_request_kafka_event ).await.unwrap();
 
     let _result = new_friend_request_relation.save(&state.conn).await.unwrap();
 
