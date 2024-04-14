@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::SocketAddr, sync::{Arc, Mutex}};
 
 use api::health;
 use axum::{routing::get, Router};
-use conf::{config_types::{ ServerConfiguration}, configuration::Configuration};
+use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
 use mqtt_events::user_mqtt_events::{send_game_invite_room_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_online_event_event_mqtt};
@@ -11,7 +11,6 @@ use rdkafka::{consumer::StreamConsumer, Message};
 use sea_orm::Database;
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
-
 
 pub mod kafka;
 pub mod conf;
@@ -29,7 +28,7 @@ extern crate paho_mqtt as mqtt;
 async fn main()  {
     let config = conf::configuration::Configuration::load().unwrap();
 
-    let mut consumers = kafka::consumer::init_consumers(&config.kafka).unwrap();
+    let consumers = kafka::consumer::init_consumers(&config.kafka).unwrap();
     
     let avro_decoder = AvroRecordDecoder::new(&config.kafka).unwrap();
     

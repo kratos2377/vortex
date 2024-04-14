@@ -29,4 +29,4 @@ paho-mqtt = { version = "0.12.3", features=["vendored-ssl"] }
 sea-orm = "0.12.12"
 
 
-orion = {path = "../orion"}
+orion = { version = "0.1.0" , path = "../orion"}

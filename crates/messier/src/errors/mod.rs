@@ -14,6 +14,7 @@ pub enum Error {
 	EntityNotFound,
 	PasswordIncorrect,
 	UsernameAlreadyExists,
+	UsernameContainsInvalidCharachter,
 	EmailAlreadyInUse,
 	PasswordLength,
 	RegistrationPayloadValidationError,
@@ -79,6 +80,7 @@ impl Error {
 			//Registration Error
 			Self::UsernameAlreadyExists => (StatusCode::BAD_REQUEST , ClientError::USERNAME_ALREADY_EXISTS),
 			Self::EmailAlreadyInUse => (StatusCode::BAD_REQUEST, ClientError::EMAIL_IN_USE),
+			Self::UsernameContainsInvalidCharachter => (StatusCode::BAD_REQUEST, ClientError::USERNAME_CONTAINS_INVALID_CHARACTER),
 
 			// Validation Error
 			Self::PasswordLength => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_LENGTH_SMALL),
@@ -153,6 +155,7 @@ pub enum ClientError {
 	GAME_CANNOT_BE_STARTED,
 	REDIS_UNWRAP_ERROR,
 	LOBBY_FULL_ERROR,
+	USERNAME_CONTAINS_INVALID_CHARACTER,
 	GAME_INVITE_SEND_ERROR,
 	ERROR_WHILE_MAKING_RELATION,
 	WALLET_ADDRESS_SAVE_ERROR,

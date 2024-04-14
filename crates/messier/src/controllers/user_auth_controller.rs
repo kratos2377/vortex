@@ -18,8 +18,6 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use sea_orm::Set;
 use sea_orm::TryIntoModel;
-use serde::Deserialize;
-use serde::Serialize;
 use serde_json::json;
 use serde_json::Value;
 use tower_cookies::Cookies;
@@ -91,6 +89,10 @@ pub async fn register_user(
         return Err(Error::MissingParamsError)
      }
 
+     if payload.username.contains("@") {
+        return  Err(Error::UsernameContainsInvalidCharachter)
+     }
+
      let user_by_username = Users::find_by_username(&payload.username).one(&state.conn).await.unwrap();
 
      if let Some(user_by_username) = user_by_username {
@@ -128,6 +130,9 @@ pub async fn register_user(
      let _result = new_user.save(&state.conn).await.unwrap();
      let recieved_user = _result.try_into_model().unwrap();
 
+     let generated_jwt_token = encode_jwt(recieved_user.id.to_string())
+     .map_err(|_| APIError { message: "Failed while Creating JWT token".to_owned(), status_code: StatusCode::UNAUTHORIZED, error_code: Some(41) }).unwrap();
+
      let body = Json(json!({
 		"result": {
 			"success": true
@@ -140,7 +145,8 @@ pub async fn register_user(
             score: recieved_user.score,
             verified: recieved_user.verified,
             email: recieved_user.email
-        }
+        },
+        "token": generated_jwt_token
 
 	}));
 
