@@ -19,7 +19,6 @@ pub mod api;
 pub mod context;
 pub mod mongo_pool;
 pub mod avro;
-pub mod controllers;
 pub mod mqtt_client;
 pub mod mqtt_events;
 
