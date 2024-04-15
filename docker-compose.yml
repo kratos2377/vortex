@@ -5,6 +5,17 @@ services:
     container_name: postgres
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      PGPASSWORD: secret
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 1024m
+    
   redis:
     image: redis:latest
     container_name: redis
@@ -63,7 +74,3 @@ services:
      - "1883:1883"
      - "18083:18083"
      - "8083:8083"
-  
-    
-  cerotis:
-    build: ./crates/cerotis 

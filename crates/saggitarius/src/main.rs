@@ -45,7 +45,7 @@ async fn start_web_server(config: &ServerConfiguration) {
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
 
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3005")
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3003")
     .await
     .unwrap();
 println!("listening on {}", listener.local_addr().unwrap());
