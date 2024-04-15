@@ -64,9 +64,6 @@ services:
      - "18083:18083"
      - "8083:8083"
   
-  orion:
-    build: ./crates/orion
-    container_name: orion
     
   cerotis:
     build: ./crates/cerotis 
