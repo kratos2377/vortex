@@ -68,5 +68,3 @@ else
   export PKG_CONFIG_ALLOW_CROSS="1"
   export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
 fi
-
-"$@"

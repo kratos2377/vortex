@@ -7,11 +7,7 @@ ARG TARGETARCH
 
 # Install build requirements
 RUN dpkg --add-architecture "${TARGETARCH}"
-RUN apt-get update && \
-    apt-get install -y \
-    make \
-    pkg-config \
-    libssl-dev:"${TARGETARCH}"
+RUN apt-get update && apt-get install -y make pkg-config libssl-dev:"${TARGETARCH}"
 COPY scripts/build-image-layer.sh /tmp/
 RUN sh /tmp/build-image-layer.sh tools
 

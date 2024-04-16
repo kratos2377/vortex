@@ -4,11 +4,7 @@ USER 0:0
 WORKDIR /home/rust/src
 
 # Install build requirements
-RUN apt-get update && \
-    apt-get install -y \
-    make \
-    pkg-config \
-    libssl-dev
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
 COPY scripts/build-image-layer.sh /tmp/
 
 # Build all dependencies
