@@ -1,4 +1,4 @@
-mongo_db:
+mongo_database:
   url: mongodb://localhost:27017/accommodation-service?replicaSet=replica-set-1
   connection: 
     pool:
@@ -12,7 +12,7 @@ server:
   port: 3005
 
 postgres_url:
-  url: postgres://demo:secret@localhost:5432/vortex?application_name=cerotis
+  url: postgres://demo:secret@localhost:5432/vortex?application_name=saggitarius
 
 redis_url:
   url: redis://localhost:6379

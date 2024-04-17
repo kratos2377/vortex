@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use axum::{handler::Handler, Router};
 use dotenv::dotenv;
+use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use socketioxide::{extract::SocketRef, socket, SocketIo};
 use tower::ServiceBuilder;
@@ -35,6 +36,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
         Ok(connection) => connection,
         Err(e) => panic!("{:?}",e)
     };
+
+    Migrator::up(&connection, None).await?;
 
     let client = redis::Client::open(config.redis_url.url).unwrap();
     let redis_connection = client.get_connection().unwrap(); 

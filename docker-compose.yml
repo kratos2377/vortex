@@ -14,6 +14,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - ./scripts/create-databases.sh:/docker-entrypoint-initdb.d/create-databases.sh:ro
     mem_limit: 1024m
     
   redis:
@@ -42,18 +44,22 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     mem_limit: 128m
-    
+
+
   broker:
     image: confluentinc/cp-kafka:7.2.2
     hostname: broker
     container_name: broker
+    depends_on:
+      - zookeeper
     ports:
       - "29092:29092"
       - "9092:9092"
       - "9101:9101"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -65,6 +71,7 @@ services:
       KAFKA_HEAP_OPTS: '-Xmx384m -Xms128m'
       KAFKA_JVM_PERFORMANCE_OPTS: '-client -XX:+UseG1GC -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -Djava.awt.headless=true'
     mem_limit: 768m
+
 
   emqx:
     image: emqx/emqx:latest

@@ -28,7 +28,7 @@ impl SaggitariusConfiguration {
 
         // Load always properties of application.yml
         let mut builder =
-            Config::builder().add_source(File::with_name("resources/application.yml"));
+            Config::builder().add_source(File::with_name("resources/application-local.yml"));
 
         // Load property files for profiles
         for profile in active_profiles {

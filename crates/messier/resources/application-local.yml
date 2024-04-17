@@ -1,8 +1,65 @@
+mongo_db:
+  url: mongodb://localhost:27017/accommodation-service?replicaSet=replica-set-1
+  connection: 
+    pool:
+      min: 1
+      max: 100
+    # optional params
+    # connect_timeout:
+    # idle_timeout: 
+
+server:
+  port: 3005
+
+postgres_url:
+  url: postgres://demo:secret@localhost:5432/vortex?application_name=messier
+
+redis_url:
+  url: redis://localhost:6379
+
 kafka:
   broker:
     urls: localhost:9092
+  consumer:
+    - id: user
+      topic:
+        - user
+      client_id: client.id
+      group_id: group.id
+    - id: game
+      topic:
+        - game
+      client_id: client.id
+      group_id: group.id
   producer:
-    client_id: kafka-connector-mongodb
-    transactional_id: kafka-connector-mongodb
+    client_id:  client.id
+    transactional_id: transactional.id
   schema_registry:
     url: http://localhost:8081
+  topic:
+    mappings:
+      - id: user
+        topic_name: user
+        partitions: 2
+      - id: game
+        topic_name: game
+        partitions: 2
+      - id: user_game_events
+        topic_name: user_game_events
+        partitions: 2
+
+mqtt:
+  dflt_broker: "tcp://127.0.0.1:1883"
+  dflt_client: "event_subscriptions_"
+  dflt_topic_user:
+    - "user_events/+"
+  dflt_qos_user:
+    - 0
+  dflt_topic_game:
+    - "game_events/+"
+  dflt_qos_game:
+    - 1
+
+email_config:
+  smtp_key: xsmtpsib-bab861626683efa1e7004721c9ab4b7dacb02047d0baf8e7ac597ac3948a5d82-RqtyNxzMn0v745TI
+  from_email: shobityadav23@gmail.com

@@ -49,35 +49,35 @@ async fn start_web_server(config: &ServerConfiguration) {
     .await
     .unwrap();
 println!("listening on {}", listener.local_addr().unwrap());
-axum::serve(listener, routing.into_make_service_with_connect_info::<SocketAddr>()).with_graceful_shutdown(shutdown_signal()).await.unwrap();
+axum::serve(listener, routing.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 
     // Shutdown tracing provider
 }
 
+// Add gracefil shutdown later
+// pub async fn shutdown_signal() {
+//     let ctrl_c = async {
+//         tokio::signal::ctrl_c()
+//             .await
+//             .expect("Initialization of Ctrl+C handler failed");
+//     };
 
-pub async fn shutdown_signal() {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Initialization of Ctrl+C handler failed");
-    };
+//     #[cfg(unix)]
+//     let terminate = async {
+//         tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+//             .expect("Initialization of signal handler failed")
+//             .recv()
+//             .await;
+//     };
 
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("Initialization of signal handler failed")
-            .recv()
-            .await;
-    };
+//     #[cfg(not(unix))]
+//     let terminate = std::future::pending::<()>();
 
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-}
+//     tokio::select! {
+//         _ = ctrl_c => {},
+//         _ = terminate => {},
+//     }
+// }
 
 
 fn init_routing() -> Router {
