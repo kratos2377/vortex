@@ -4,7 +4,7 @@ use crate::errors::Error;
 use crate::errors;
 use crate::state::AppDBState;
 use crate::utils::api_error::APIError;
-use crate::utils::jwt::encode_jwt;
+use crate::utils::jwt::{decode_jwt, encode_jwt};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
@@ -23,9 +23,47 @@ use serde_json::Value;
 use tower_cookies::Cookies;
 use uuid::Uuid;
 
-use super::payloads::{LoginPayload, RegistrationPayload, SendEmailPayload, VerifyUserPayload};
+use super::payloads::{LoginPayload, RegistrationPayload, SendEmailPayload, VerifyTokenPayload, VerifyUserPayload};
 
 
+pub async fn verify_token(
+    state: State<AppDBState>,
+	payload: Json<VerifyTokenPayload>,
+) -> Result<Json<Value>> {
+
+
+    if payload.token == "" {
+        return Err(Error::MissingParamsError)
+     }
+
+     let res = decode_jwt(payload.token.clone());
+
+     if res.is_err() {
+        return Err(Error::InvalidUserToken)
+     }
+ 
+     let token_data = res.unwrap();
+
+     let user_data = Users::find_by_id(&token_data.claims.user_id).one(&state.conn).await.unwrap();
+
+     if user_data.is_none() {
+        return Err(Error::NoUserEntityFoundForToken)
+     }
+
+     let user_model = user_data.unwrap();
+ 
+ 
+     let body = Json(json!({
+         "result": {
+             "success": true
+         },
+ 
+         "user_data":  user_model
+     }));
+ 
+     Ok(body)
+
+}
 
 
 pub async fn login_user(

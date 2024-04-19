@@ -11,7 +11,9 @@ pub enum Error {
 	LoginFail,
 	RegistrationFail,
 	MissingParamsError,
+	InvalidUserToken,
 	EntityNotFound,
+	NoUserEntityFoundForToken,
 	PasswordIncorrect,
 	UsernameAlreadyExists,
 	UsernameContainsInvalidCharachter,
@@ -73,6 +75,10 @@ impl Error {
 
 			//Entity Not Found
 			Self::EntityNotFound => (StatusCode::BAD_REQUEST, ClientError::ENTITY_NOT_FOUND),
+
+			//Invalid Token
+			Self::InvalidUserToken => (StatusCode::BAD_REQUEST, ClientError::INVALID_USER_TOKEN),
+			Self::NoUserEntityFoundForToken => (StatusCode::BAD_REQUEST, ClientError::NO_USER_ENTITY_FOUND_FOR_TOKEN),
 
 			//Password Incorrect
 			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
@@ -151,8 +157,10 @@ pub enum ClientError {
 	CREATE_LOBBY_ERROR,
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
+	INVALID_USER_TOKEN,
 	DELETE_LOBBY_ERROR,
 	GAME_CANNOT_BE_STARTED,
+	NO_USER_ENTITY_FOUND_FOR_TOKEN,
 	REDIS_UNWRAP_ERROR,
 	LOBBY_FULL_ERROR,
 	USERNAME_CONTAINS_INVALID_CHARACTER,

@@ -55,6 +55,11 @@ pub struct WebsocketPayload {
     pub event: String
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct VerifyTokenPayload {
+	pub token: String,
+}
+
 
 // User Auth Payloads
 #[derive(Clone, Debug, Deserialize)]
