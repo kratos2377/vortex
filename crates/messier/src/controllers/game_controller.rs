@@ -211,7 +211,7 @@ pub async fn get_ongoing_games_for_user(
     }
 
     //Database name will change 
-    let mongo_db = state.context.get_mongo_db_client().database("mydb");
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
 
     let user_collection = mongo_db.collection::<UserGameRelation>("users");
     let game_collection = mongo_db.collection::<Game>("games");
@@ -260,7 +260,7 @@ pub async fn get_current_state_of_game(
     }
 
     //Database name will change 
-    let mongo_db = state.context.get_mongo_db_client().database("mydb");
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
 
     let game_collection = mongo_db.collection::<Game>("games");
 

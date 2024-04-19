@@ -93,7 +93,7 @@ pub struct ResponseUser {
    pub first_name: String,
    pub last_name: String,
    pub email: String,
-   pub score: u64,
+   pub score: i32,
    pub verified: bool,
 }
 

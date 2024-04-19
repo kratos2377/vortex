@@ -24,7 +24,7 @@ impl<'a> UserGameEventConverter<'a> {
     ) -> Result<UserGameEventConverter<'a>, Error> {
         Ok(UserGameEventConverter {
             avro_encoder: Arc::new(kafka::avro_decoder::init_avro_encoder(config).unwrap()),
-            topic_configuration: config.topic.get_mapping("events"),
+            topic_configuration: config.topic.get_mapping("user_game_events"),
         })
     }
 }

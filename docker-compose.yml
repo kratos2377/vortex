@@ -31,7 +31,10 @@ services:
     container_name: mongodb
     ports:
       - "27017:27017"
-    command: mongod --replSet replica-set-1
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpasswd
+      - MONGO_INITDB_DATABASE=user_game_events_db
     mem_limit: 768m
 
   zookeeper:

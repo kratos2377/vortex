@@ -16,7 +16,7 @@ pub struct Model {
     pub first_name: String,
     pub last_name: String,
     pub verified: bool,
-    pub score: u64,
+    pub score: i32,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }

@@ -27,6 +27,7 @@ pub struct Model {
 pub async fn save(db_session: &ClientSession, event: &EventDto) -> Result<(), Error> {
     let trace_id = get_b3_trace_id();
 
+    println!("THE USER GAME EVENT IS: {}", event.topic);
     // Build the entity from dto
     let e = Model {
         key: event.key.clone(),

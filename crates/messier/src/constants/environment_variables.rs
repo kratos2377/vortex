@@ -15,5 +15,7 @@ pub const SMTP_HOST: &str = "smtp-relay.sendinblue.com";
 
 fn set_token() -> String{
     dotenv().ok();
-    env::var("JWT_SECRET_TOKEN").unwrap()
+   // let token = env::var("JWT_SECRET_TOKEN").unwrap();
+    "new-jwt-secret-token".to_string()
+
 }

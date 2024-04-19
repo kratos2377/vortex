@@ -12,7 +12,7 @@ server:
   port: 3005
 
 postgres_url:
-  url: postgres://demo:secret@localhost:5432/vortex?application_name=messier
+  url: postgres://postgres:secret@localhost:5432/vortex
 
 redis_url:
   url: redis://localhost:6379

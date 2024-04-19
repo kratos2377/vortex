@@ -69,6 +69,7 @@ pub async fn send_to_kafka(
     producer: Arc<FutureProducer>,
     events: &EventList,
 ) -> Result<(), KafkaError> {
+    // Adding this comment , incase if i have to hardcode the topics for kafka
     let events_to_send = &events.events;
     let number_of_events = events_to_send.len();
 

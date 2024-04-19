@@ -127,7 +127,7 @@ pub async fn register_user(
         updated_at: Set(Utc::now().naive_utc())
      };
 
-     let _result = new_user.save(&state.conn).await.unwrap();
+     let _result = new_user.insert(&state.conn).await.unwrap();
      let recieved_user = _result.try_into_model().unwrap();
 
      let generated_jwt_token = encode_jwt(recieved_user.id.to_string())
@@ -233,7 +233,7 @@ fn verify_password(hashed_password: String , entered_password: String) -> bool {
 
 fn hash_password(password: &String) -> String {
     let config = Config::default();
-    let hash = argon2::hash_encoded(password.as_bytes(), b"salt", &config).unwrap();
+    let hash = argon2::hash_encoded(password.as_bytes(), b"secretsalt", &config).unwrap();
     hash
 }
 
