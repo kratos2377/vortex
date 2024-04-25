@@ -179,3 +179,19 @@ pub struct GetGameCurrentStatePayload {
    pub game_id: Uuid,
 }
 
+
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct ChangeUserPasswordPayload {
+   pub user_id: String,
+   pub password: String,
+   pub new_password: String,
+}
+
+
+#[derive( Clone, Debug, Deserialize , Serialize)]
+pub struct ChangeUserUsernamePayload {
+   pub user_id: String,
+   pub username: String
+}
+
+

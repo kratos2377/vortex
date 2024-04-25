@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::MutexGuard};
 use crate::event_producer::user_events_producer::send_event_for_user_topic;
 use crate::{errors::Error, event_producer::user_events_producer::create_friend_request_event};
 use crate::errors;
-use axum_macros::debug_handler;
+use argon2::{self, Config};
 use orion::constants::FRIEND_REQUEST_EVENT;
 use orion::events::kafka_event::UserFriendRequestKafkaEvent;
 use redis::{Commands, Connection, RedisError, RedisResult};
@@ -16,12 +16,11 @@ use errors::Result as APIResult;
 use sea_orm::{ActiveModelTrait, TryIntoModel};
 use sea_orm::EntityTrait;
 use sea_orm::Set;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
 use uuid::Uuid;
 
-use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, SendRequestPayload};
+use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, ChangeUserPasswordPayload, ChangeUserUsernamePayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, SendRequestPayload};
 
 
 
@@ -313,3 +312,96 @@ pub async fn get_all_users_friends(
      Ok(body)
 }
 
+
+pub async fn change_user_password(
+    State(state): State<AppDBState>,
+	Json(payload): Json<ChangeUserPasswordPayload>,
+) -> APIResult<Json<Value>> {
+    if payload.user_id == "" || payload.new_password == "" || payload.password == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    if payload.new_password == payload.password {
+        return Err(Error::SamePasswordAsPreviousOne)
+    }
+
+    if payload.new_password.len() < 8 {
+        return Err(Error::NewPasswordLengthIsSmall)
+    }
+
+
+    let user = Users::find_by_id(&payload.user_id).one(&state.conn).await.unwrap();
+    let mut user_model: users::ActiveModel = user.unwrap().into();
+    let converted_model = user_model.clone().try_into_model().unwrap();
+
+    if !verify_password(converted_model.password, payload.password) {
+        return Err(Error::PasswordIncorrect)
+    }
+
+    let new_hash_password = hash_password(&payload.new_password);
+
+    user_model.password = Set(new_hash_password.to_owned());
+
+    let res = user_model.update(&state.conn).await;
+
+    if res.is_err() {
+        return Err(Error::PasswordChangeError)
+    }
+
+    let body = Json(json!({
+		"result": {
+			"success": true,
+		}
+	}));
+
+
+     Ok(body)
+
+}
+
+
+pub async fn change_user_username(
+    State(state): State<AppDBState>,
+	Json(payload): Json<ChangeUserUsernamePayload>,
+) -> APIResult<Json<Value>> {
+    if payload.user_id == "" || payload.username == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+
+    let user = Users::find_by_username(&payload.username).one(&state.conn).await.unwrap();
+
+    if !user.is_none() {
+        return Err(Error::UsernameAlreadyExists)
+    }
+
+    let mut user_model: users::ActiveModel = user.unwrap().into();
+    user_model.username = Set(payload.username);
+
+
+    let res = user_model.update(&state.conn).await;
+
+    if res.is_err() {
+        return Err(Error::UserNameChangeError)
+    }
+
+    let body = Json(json!({
+		"result": {
+			"success": true,
+		}
+	}));
+
+
+     Ok(body)
+
+}
+
+fn verify_password(hashed_password: String , entered_password: String) -> bool {
+    return argon2::verify_encoded(&hashed_password, entered_password.as_bytes()).unwrap()
+}
+
+fn hash_password(password: &String) -> String {
+    let config = Config::default();
+    let hash = argon2::hash_encoded(password.as_bytes(), b"secretsalt", &config).unwrap();
+    hash
+}

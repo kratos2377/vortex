@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use migration::cli::Cli;
 use opentelemetry::trace::Status;
 use serde::Serialize;
 
@@ -13,15 +14,19 @@ pub enum Error {
 	MissingParamsError,
 	InvalidUserToken,
 	EntityNotFound,
+	SamePasswordAsPreviousOne,
 	NoUserEntityFoundForToken,
 	PasswordIncorrect,
 	UsernameAlreadyExists,
 	UsernameContainsInvalidCharachter,
 	EmailAlreadyInUse,
 	PasswordLength,
+	NewPasswordLengthIsSmall,
 	RegistrationPayloadValidationError,
+	UserNameChangeError,
 	SendEmailError,
 	CreateLobbyError,
+	PasswordChangeError,
 	JoinLobbyError,
 	RemoveFromLobbyError,
 	DeleteLobbyError,
@@ -75,6 +80,7 @@ impl Error {
 
 			//Entity Not Found
 			Self::EntityNotFound => (StatusCode::BAD_REQUEST, ClientError::ENTITY_NOT_FOUND),
+			Self::PasswordChangeError => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_CHANGE_ERROR),
 
 			//Invalid Token
 			Self::InvalidUserToken => (StatusCode::BAD_REQUEST, ClientError::INVALID_USER_TOKEN),
@@ -94,12 +100,17 @@ impl Error {
 
 			Self::SendEmailError => (StatusCode::BAD_REQUEST, ClientError::SEND_EMAIL_ERROR),
 
+			Self::SamePasswordAsPreviousOne => (StatusCode::BAD_REQUEST , ClientError::SAME_PASSWORD_AS_PREVIOUS_ONE),
+
+			Self::NewPasswordLengthIsSmall => (StatusCode::BAD_REQUEST , ClientError::NEW_PASSWORD_LENGHT_IS_SMALL),
+
 			//Create Lobby Error
 			Self::CreateLobbyError => (StatusCode::BAD_REQUEST, ClientError::CREATE_LOBBY_ERROR),
 			Self::JoinLobbyError => (StatusCode::BAD_REQUEST, ClientError::JOIN_LOBBY_ERROR),
 			Self::RemoveFromLobbyError => (StatusCode::BAD_REQUEST, ClientError::REMOVE_USER_FROM_LOBBY_ERROR),
 
 			Self::DeleteLobbyError => (StatusCode::BAD_REQUEST, ClientError::DELETE_LOBBY_ERROR),
+			Self::UserNameChangeError => (StatusCode::BAD_REQUEST, ClientError::USERNAME_CHANGE_ERROR),
 
 
 			Self::GameCannotBeStarted => (StatusCode::BAD_REQUEST, ClientError::GAME_CANNOT_BE_STARTED),
@@ -157,18 +168,22 @@ pub enum ClientError {
 	CREATE_LOBBY_ERROR,
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
+	USERNAME_CHANGE_ERROR,
 	INVALID_USER_TOKEN,
 	DELETE_LOBBY_ERROR,
 	GAME_CANNOT_BE_STARTED,
+	PASSWORD_CHANGE_ERROR,
 	NO_USER_ENTITY_FOUND_FOR_TOKEN,
 	REDIS_UNWRAP_ERROR,
 	LOBBY_FULL_ERROR,
 	USERNAME_CONTAINS_INVALID_CHARACTER,
+	SAME_PASSWORD_AS_PREVIOUS_ONE,
 	GAME_INVITE_SEND_ERROR,
 	ERROR_WHILE_MAKING_RELATION,
 	WALLET_ADDRESS_SAVE_ERROR,
 	SPECTATE_GAME_JOIN_ERROR,
 	SPECTATE_GAME_LEAVE_ERROR,
+	NEW_PASSWORD_LENGHT_IS_SMALL,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
