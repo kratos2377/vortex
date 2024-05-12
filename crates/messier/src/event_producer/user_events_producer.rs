@@ -107,7 +107,7 @@ pub async fn create_user_online_events(context: &DynContext, payload: String) ->
                
    
        
-           let friend_result = match Users::find_by_id(&user_friend.friendid.to_string())
+           let friend_result = match Users::find_by_id(user_friend.friendid)
                .one(&connection)
                .await
            {

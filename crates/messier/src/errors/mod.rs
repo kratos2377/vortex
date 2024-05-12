@@ -1,10 +1,24 @@
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::body::Body;
+use axum::http::{StatusCode};
+use axum::response::{IntoResponse , Response};
+use serde_json::Value;
+use axum::Json;
 use migration::cli::Cli;
 use opentelemetry::trace::Status;
 use serde::Serialize;
+use serde_json::json;
 
 pub type Result<T> = core::result::Result<T, Error>;
+
+
+pub struct ErrorPayloadResponse {
+	pub result: SuccessResponse,
+	pub error_message: String,
+}
+
+pub struct SuccessResponse {
+	pub success: bool
+}
 
 #[derive(Clone, Debug, Serialize, strum_macros::AsRefStr)]
 #[serde(tag = "type", content = "data")]
@@ -58,10 +72,20 @@ impl std::error::Error for Error {}
 
 impl IntoResponse for Error {
 	fn into_response(self) -> Response {
-		println!("->> {:<12} - {self:?}", "INTO_RES");
+	//	println!("->> {:<12} - {self:?}", "INTO_RES");
+		let (status_code , error_message) = self.client_status_and_error();
+		let json_body_string = Json(json!({
+			"result": {
+				"success": false
+			},
 
-		let mut response = StatusCode::INTERNAL_SERVER_ERROR.into_response();
+			"error_message": format!("{:?}", error_message)
+	
+		}));
 
+	
+		let mut response = Response::builder().status(status_code).body(json_body_string.into_response().into_body()).unwrap();
+		
 		response.extensions_mut().insert(self);
 
 		response
@@ -72,7 +96,7 @@ impl Error {
 	pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
 		#[allow(unreachable_patterns)]
 		match self {
-			Self::LoginFail => (StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL),
+			Self::LoginFail => (StatusCode::UNAUTHORIZED, ClientError::LOGIN_FAIL),
 			Self::RegistrationFail => (StatusCode::FORBIDDEN, ClientError::REGISTRATION_FAIL),
 
 			// Missing Params Error

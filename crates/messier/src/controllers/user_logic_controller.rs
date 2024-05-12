@@ -260,7 +260,7 @@ pub async fn get_all_users_friends(
                 
     
         
-            let friend_result = match Users::find_by_id(&user_friend.friendid.to_string())
+            let friend_result = match Users::find_by_id(user_friend.friendid)
                 .one(&state.conn)
                 .await
             {
@@ -330,7 +330,7 @@ pub async fn change_user_password(
     }
 
 
-    let user = Users::find_by_id(&payload.user_id).one(&state.conn).await.unwrap();
+    let user = Users::find_by_id(Uuid::from_str(&payload.user_id).unwrap()).one(&state.conn).await.unwrap();
     let mut user_model: users::ActiveModel = user.unwrap().into();
     let converted_model = user_model.clone().try_into_model().unwrap();
 

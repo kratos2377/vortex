@@ -56,7 +56,7 @@ impl Related<super::users_wallet_keys::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
-    pub fn find_by_id(id: &str) -> Select<Entity> {
+    pub fn find_by_id(id: Uuid) -> Select<Entity> {
         Self::find().filter(Column::Id.eq(id))
     }
 

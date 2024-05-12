@@ -59,7 +59,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
 
     socket.on("start-game-event", |socket: SocketRef, Data::<String>(msg)| {
         let data: GameStartPayload = serde_json::from_str(&msg).unwrap();
-
+       // socket.game_id = data.game_id;
         let _ = socket.broadcast().to(data.game_id).emit("start-game-for-all" , msg);
     });
 
@@ -70,10 +70,11 @@ pub fn create_ws_game_events(socket: SocketRef) {
     });
 
 
-   // socket.on_disconnect(callback)
-
    socket.on_disconnect(|socket: SocketRef| async move {
-       info!("Socket.IO disconnected: {} {}", socket.id, "reason");
+    //Add Events to publish disconnected events
+    // Maybe i will add a redis layer for this
+    //   info!("Socket.IO disconnected: {} {}", socket.id, "reason");
+
        socket.disconnect().ok();
 });
 

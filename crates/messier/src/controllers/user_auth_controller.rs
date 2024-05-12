@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::constants::environment_variables::SMTP_HOST;
 use crate::controllers::payloads::ResponseUser;
 use crate::errors::Error;
@@ -31,7 +33,6 @@ pub async fn verify_token(
 	payload: Json<VerifyTokenPayload>,
 ) -> Result<Json<Value>> {
 
-
     if payload.token == "" {
         return Err(Error::MissingParamsError)
      }
@@ -44,14 +45,13 @@ pub async fn verify_token(
  
      let token_data = res.unwrap();
 
-     let user_data = Users::find_by_id(&token_data.claims.user_id).one(&state.conn).await.unwrap();
+     let user_data = Users::find_by_id(Uuid::from_str(&token_data.claims.user_id).unwrap()).one(&state.conn).await.unwrap();
 
      if user_data.is_none() {
         return Err(Error::NoUserEntityFoundForToken)
      }
 
      let user_model = user_data.unwrap();
- 
  
      let body = Json(json!({
          "result": {
@@ -232,7 +232,7 @@ pub async fn verify_user(
     state: State<AppDBState>,
 	Json(payload): Json<VerifyUserPayload>,
 ) -> Result<Json<Value>> {
-    let user = Users::find_by_id(&payload.id).one(&state.conn).await.unwrap();
+    let user = Users::find_by_id(Uuid::from_str(&payload.id).unwrap()).one(&state.conn).await.unwrap();
      let mut user_recieved = if let Some(user) = user {
         user
      } else {
