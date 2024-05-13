@@ -35,7 +35,11 @@ impl Related<super::users::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
-    pub fn find_by_id(id: &str) -> Select<Entity> {
-        Self::find().filter(Column::Id.eq(id))
+    pub fn find_by_id(id: &Uuid) -> Select<Entity> {
+        Self::find().filter(Column::Id.eq(*id))
+    }
+
+    pub fn find_by_user_received_id(id: &Uuid) -> Select<Entity> {
+        Self::find().filter(Column::UserRecievedId.eq(*id))
     }
 }

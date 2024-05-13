@@ -68,7 +68,7 @@ pub async fn accept_or_reject_request(
         return Err(Error::MissingParamsError)
     }
 
-    let friend_request_relation  = UsersFriendsRequests::find_by_id(&payload.friend_request_relation_id).one(&state.conn).await.unwrap().expect("Some Error Occured");
+    let friend_request_relation  = UsersFriendsRequests::find_by_id(&Uuid::from_str(&payload.friend_request_relation_id).unwrap()).one(&state.conn).await.unwrap().expect("Some Error Occured");
 
     if payload.value == "-1" {
         let _delete_relation = users_friends_requests::Entity::delete_by_id(Uuid::from_str(&payload.friend_request_relation_id).unwrap()).exec(&state.conn).await;
@@ -87,7 +87,7 @@ pub async fn accept_or_reject_request(
         return Err(Error::ErrorWhileMakingRelation);
     }
 
-    let current_user_relation = UsersFriends::find_by_user_and_friend_id(&friend_request_relation.user_sent_id.to_string() , &friend_request_relation.user_recieved_id.to_string()).one(&state.conn).await.unwrap();
+    let current_user_relation = UsersFriends::find_by_user_and_friend_id(&friend_request_relation.user_sent_id , &friend_request_relation.user_recieved_id).one(&state.conn).await.unwrap();
 
     if current_user_relation.is_some() {
         let body = Json(json!({
@@ -105,13 +105,13 @@ pub async fn accept_or_reject_request(
     let new_friend_request_relations = vec![
         users_friends::ActiveModel {
             id: Set(new_relation_id_v1),
-            userid: Set(friend_request_relation.user_sent_id),
-            friendid: Set(friend_request_relation.user_recieved_id),
+            user_id: Set(friend_request_relation.user_sent_id),
+            friend_id: Set(friend_request_relation.user_recieved_id),
     },
     users_friends::ActiveModel {
         id: Set(new_relation_id_v2),
-        friendid: Set(friend_request_relation.user_sent_id),
-        userid: Set(friend_request_relation.user_recieved_id),
+        friend_id: Set(friend_request_relation.user_sent_id),
+        user_id: Set(friend_request_relation.user_recieved_id),
 },
     ];
     let _result = users_friends::Entity::insert_many(new_friend_request_relations).exec(&state.conn).await;
@@ -140,7 +140,7 @@ pub async fn get_user_friend_requests(
     }
 
     // Add custom Query to return all users id,username,and any other details
-    let user_friends_ = users_friends::Entity::find_by_user_id(&payload.user_id).all(&state.conn).await.unwrap();
+    let user_friends_ = users_friends::Entity::find_by_user_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
 
 
 
@@ -166,9 +166,9 @@ pub async fn add_wallet_address(
     let new_relation_id = Uuid::new_v4();
     let user_wallet = users_wallet_keys::ActiveModel {
         id: Set(new_relation_id),
-        userid: Set(payload.user_id),
-        walletaddress: Set(payload.wallet_address),
-        wallettype: Set(payload.wallet_name)
+        user_id: Set(payload.user_id),
+        wallet_address: Set(payload.wallet_address),
+        wallet_type: Set(payload.wallet_name)
     };
 
     let _result = user_wallet.save(&state.conn).await;
@@ -246,7 +246,7 @@ pub async fn get_all_users_friends(
 
 
      let mut results_resp: Vec<GetOnlineFriendsResponseModel>  = vec![];
-     let result = users_friends::Entity::find_by_user_id(&payload.user_id).all(&state.conn).await.unwrap();
+     let result = users_friends::Entity::find_by_user_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
 
 
 
@@ -260,7 +260,7 @@ pub async fn get_all_users_friends(
                 
     
         
-            let friend_result = match Users::find_by_id(user_friend.friendid)
+            let friend_result = match Users::find_by_id(user_friend.friend_id)
                 .one(&state.conn)
                 .await
             {

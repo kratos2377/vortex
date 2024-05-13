@@ -7,17 +7,17 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: Uuid,
-    pub userid: String,
+    pub user_id: String,
     #[sea_orm(unique)]
-    pub walletaddress: String,
-    pub wallettype: String,
+    pub wallet_address: String,
+    pub wallet_type: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::users::Entity",
-        from = "Column::Userid",
+        from = "Column::UserId",
         to = "super::users::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
@@ -35,16 +35,21 @@ impl Related<super::users::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
-    pub fn find_by_id(id: &str) -> Select<Entity> {
-        Self::find().filter(Column::Id.eq(id))
+    pub fn find_by_id(id: &Uuid) -> Select<Entity> {
+        Self::find().filter(Column::Id.eq(*id))
     }
 
     pub fn find_by_userid(userid: &str) -> Select<Entity> {
-        Self::find().filter(Column::Userid.eq(userid))
+        Self::find().filter(Column::UserId.eq(userid))
     }
 
     pub fn find_by_wallettype(wallettype: &str) -> Select<Entity> {
-        Self::find().filter(Column::Wallettype.eq(wallettype))
+        Self::find().filter(Column::WalletType.eq(wallettype))
     }
+
+    pub fn find_by_wallet_address(wallet_address: &str) -> Select<Entity> {
+        Self::find().filter(Column::WalletAddress.eq(wallet_address))
+    }
+
 
 }

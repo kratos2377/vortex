@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
@@ -7,6 +7,7 @@ use sea_orm::TryIntoModel;
 use futures_util::future;
 use ton::models::{self, users, users_wallet_keys};
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
+use uuid::Uuid;
 use crate::context::context::DynContext;
 
 
@@ -91,7 +92,7 @@ pub async fn send_event_for_user_topic(
 pub async fn create_user_online_events(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let data: UserConnectionEventPayload = serde_json::from_str(&payload).unwrap();
     let connection = context.get_postgres_db_client();
-    let result = users_friends::Entity::find_by_user_id(&data.user_id).all(&connection).await.unwrap();
+    let result = users_friends::Entity::find_by_user_id(&Uuid::from_str(&data.user_id).unwrap()).all(&connection).await.unwrap();
 
 
 
@@ -107,7 +108,7 @@ pub async fn create_user_online_events(context: &DynContext, payload: String) ->
                
    
        
-           let friend_result = match Users::find_by_id(user_friend.friendid)
+           let friend_result = match Users::find_by_id(user_friend.friend_id)
                .one(&connection)
                .await
            {

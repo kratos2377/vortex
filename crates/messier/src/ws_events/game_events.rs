@@ -18,7 +18,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
         let data: UserConnectionEventPayload = serde_json::from_str(&msg).unwrap();
      
          async move {
-            produce_kafka_event_for_redis(&producer, "user".to_string() , socket.id.to_string() , data.user_id).await.unwrap();
+          //  produce_kafka_event_for_redis(&producer, "user".to_string() , socket.id.to_string() , data.user_id).await.unwrap();
             send_event_for_user_topic(&producer, &context, USER_ONLINE_EVENT.to_string() ,msg).await.unwrap();
          }
     });

@@ -32,8 +32,8 @@ kafka:
       client_id: client.id
       group_id: group.id
   producer:
-    client_id:  client.id
-    transactional_id: transactional.id
+    client_id:  saggitarius
+    transactional_id: saggitarius-transactions
   schema_registry:
     url: http://localhost:8081
   topic:
