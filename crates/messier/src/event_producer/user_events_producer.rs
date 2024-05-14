@@ -54,6 +54,10 @@ pub async fn send_event_for_user_topic(
 
     };
 
+    if kafka_events.len() == 0 {
+        return Ok(())
+    }
+
 
     producer.begin_transaction().unwrap();
 
@@ -92,9 +96,14 @@ pub async fn send_event_for_user_topic(
 pub async fn create_user_online_events(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let data: UserConnectionEventPayload = serde_json::from_str(&payload).unwrap();
     let connection = context.get_postgres_db_client();
-    let result = users_friends::Entity::find_by_user_id(&Uuid::from_str(&data.user_id).unwrap()).all(&connection).await.unwrap();
+    let rsp = users_friends::Entity::find_by_user_id(&Uuid::from_str(&data.user_id).unwrap()).all(&connection).await;
+
+    if rsp.is_err() {
+        return Vec::new()
+    }
 
 
+    let result = rsp.unwrap();
 
     let arc_redis_client = context.get_redis_db_client();
 
