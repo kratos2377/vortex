@@ -55,3 +55,4 @@ bson = { version = "2.4.0", features = ["uuid-1", "serde_with"] }
 murmur3 = "0.5.2"
 opentelemetry = "0.22.0"
 tracing-opentelemetry = "0.23.0"
+rand = "0.8.5"

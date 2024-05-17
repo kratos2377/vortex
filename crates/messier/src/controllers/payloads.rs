@@ -80,7 +80,8 @@ pub struct RegistrationPayload {
 
 #[derive( Clone, Debug, Deserialize)]
 pub struct VerifyUserPayload {
-   pub id: String
+   pub id: String,
+   pub user_key: String,
 }
 
 

@@ -2284,6 +2284,7 @@ dependencies = [
  "murmur3",
  "opentelemetry",
  "orion",
+ "rand",
  "rdkafka",
  "redis 0.24.0",
  "rust-argon2",

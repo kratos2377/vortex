@@ -3,16 +3,19 @@ use std::str::FromStr;
 use crate::constants::environment_variables::SMTP_HOST;
 use crate::controllers::payloads::ResponseUser;
 use crate::errors::Error;
-use crate::errors;
+use crate::{errors, utils};
 use crate::state::AppDBState;
 use crate::utils::api_error::APIError;
+use std::sync::{Arc, Mutex};
 use crate::utils::jwt::{decode_jwt, encode_jwt};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
 use argon2::{self, Config};
+use axum_macros::debug_handler;
 use chrono::Utc;
 use lazy_regex::Regex;
+use redis::{Commands, Connection, RedisError, RedisResult, SetOptions};
 use ton::models::users::{self , Entity as Users};
 use errors::Result;
 use sea_orm::ActiveModelTrait;
@@ -112,7 +115,16 @@ pub async fn login_user(
 			"success": true
 		},
 
-        "token":  generated_jwt_token
+        "token":  generated_jwt_token,
+        "user": ResponseUser {
+            id: user_found.id,
+            first_name: user_found.first_name,
+            last_name: user_found.last_name,
+            username: user_found.username,
+            score: user_found.score,
+            verified: user_found.verified,
+            email: user_found.email
+        },
 	}));
 
 	Ok(body)
@@ -196,12 +208,25 @@ pub async fn send_email(
     state: State<AppDBState>,
 	Json(payload): Json<SendEmailPayload>,
 ) -> Result<Json<Value>> {
+    let rand_code = utils::generate_random_string::generate_random_string(6);
+    let redis_connection  = state.context.get_redis_db_client();
+    let mut rc = redis_connection.lock().unwrap();
+
+    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+   let redis_rsp: RedisResult<()> =  rc.set_options(payload.id + "-email-key", rand_code.clone(), opts);
+
+
+   if redis_rsp.is_err() {
+    return Err(Error::FailedToSetRedisKeyWithOptions)
+   }
+
     let email: Message = Message::builder()
     .from(state.from_email.parse().unwrap())
     .to(payload.to_email.parse().unwrap())
-    .subject("Your subject")
-    .body("Your body".to_string())
+    .subject("Find Your Code in the body")
+    .body("Your code is: \n".to_string() + &rand_code + "\n The code is only valid for 15 minutes")
     .unwrap();
+
 
 let creds: Credentials = Credentials::new(state.from_email.to_string(), state.smtp_key.to_string());
 
@@ -232,6 +257,28 @@ pub async fn verify_user(
     state: State<AppDBState>,
 	Json(payload): Json<VerifyUserPayload>,
 ) -> Result<Json<Value>> {
+
+    if payload.id == "" || payload.user_key == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+
+    let user_key_from_redis_rs= get_key_from_redis(payload.id.to_string() + "-email-key", state.context.get_redis_db_client());
+
+    println!("KEY RECV IS");
+    println!("{:?}" , user_key_from_redis_rs);
+    if user_key_from_redis_rs.is_err() {
+        return Err(Error::FailedToGetKeyFromRedis)
+    }
+
+    let key_from_redis  = user_key_from_redis_rs.unwrap();
+
+    if key_from_redis != payload.user_key {
+        return Err(Error::InvalidEmailUserKey)
+    }
+
+   
+
     let user = Users::find_by_id(Uuid::from_str(&payload.id).unwrap()).one(&state.conn).await.unwrap();
      let mut user_recieved = if let Some(user) = user {
         user
@@ -254,7 +301,11 @@ pub async fn verify_user(
         verified: Set(user_recieved.verified),
     };
 
-    user_active_model.save(&state.conn).await.unwrap();
+    let rsp = user_active_model.save(&state.conn).await;
+
+    if rsp.is_err() {
+        return Err(Error::FailedToVerifyUser)
+    }
     let body = Json(json!({
 		"result": {
 			"success": true
@@ -287,4 +338,12 @@ fn validate_user_payload(payload: &RegistrationPayload) -> bool {
     }
 
     return true
+}
+
+pub fn get_key_from_redis(key: String, redis_connection: Arc<Mutex<Connection>>) -> RedisResult<String> {
+   
+    let mut rc = redis_connection.lock().unwrap();
+
+    let user_key_from_redis_rs: RedisResult<String> = rc.get(key);
+    user_key_from_redis_rs
 }

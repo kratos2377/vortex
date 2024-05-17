@@ -26,6 +26,7 @@ pub enum Error {
 	LoginFail,
 	RegistrationFail,
 	MissingParamsError,
+	FailedToSetRedisKeyWithOptions,
 	InvalidUserToken,
 	EntityNotFound,
 	SamePasswordAsPreviousOne,
@@ -33,7 +34,9 @@ pub enum Error {
 	PasswordIncorrect,
 	UsernameAlreadyExists,
 	UsernameContainsInvalidCharachter,
+	FailedToVerifyUser,
 	EmailAlreadyInUse,
+	FailedToGetKeyFromRedis,
 	PasswordLength,
 	NewPasswordLengthIsSmall,
 	RegistrationPayloadValidationError,
@@ -41,11 +44,13 @@ pub enum Error {
 	SendEmailError,
 	CreateLobbyError,
 	PasswordChangeError,
+	InvalidEmailUserKey,
 	JoinLobbyError,
 	RemoveFromLobbyError,
 	DeleteLobbyError,
 	GameCannotBeStarted,
 	RedisUnwrapError,
+	RedisGetKeyError,
 	LobbyFull,
 	GameInviteSendError,
 	WalletAddressSaveError,
@@ -113,6 +118,8 @@ impl Error {
 			//Password Incorrect
 			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
 
+			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
+
 			//Registration Error
 			Self::UsernameAlreadyExists => (StatusCode::BAD_REQUEST , ClientError::USERNAME_ALREADY_EXISTS),
 			Self::EmailAlreadyInUse => (StatusCode::BAD_REQUEST, ClientError::EMAIL_IN_USE),
@@ -135,15 +142,21 @@ impl Error {
 
 			Self::DeleteLobbyError => (StatusCode::BAD_REQUEST, ClientError::DELETE_LOBBY_ERROR),
 			Self::UserNameChangeError => (StatusCode::BAD_REQUEST, ClientError::USERNAME_CHANGE_ERROR),
+			Self::InvalidEmailUserKey => (StatusCode::BAD_REQUEST, ClientError::INVALID_EMAIL_USER_KEY),
 
 
 			Self::GameCannotBeStarted => (StatusCode::BAD_REQUEST, ClientError::GAME_CANNOT_BE_STARTED),
-
+			
+			Self::RedisGetKeyError => (StatusCode::BAD_REQUEST, ClientError::REDIS_GET_KEY_ERROR),
 			Self::RedisUnwrapError => (StatusCode::BAD_REQUEST, ClientError::REDIS_UNWRAP_ERROR),
 
 			Self::LobbyFull => (StatusCode::BAD_REQUEST, ClientError::LOBBY_FULL_ERROR),
 
+			Self::FailedToVerifyUser => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_VERIFY_USER),
+
 			Self::ErrorWhileMakingRelation => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_MAKING_RELATION),
+
+			Self::FailedToSetRedisKeyWithOptions => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_SET_REDIS_KEY_WITH_OPTIONS),
 
 			//Address Error
 			Self::WalletAddressSaveError => (StatusCode::BAD_REQUEST, ClientError::WALLET_ADDRESS_SAVE_ERROR),
@@ -185,6 +198,7 @@ pub enum ClientError {
 	ENTITY_NOT_FOUND,
 	PASSWORD_INCORRECT,
 	USERNAME_ALREADY_EXISTS,
+	FAILED_TO_GET_KEY_FROM_REDIS,
 	EMAIL_IN_USE,
 	PASSWORD_LENGTH_SMALL,
 	REGISTRATION_PAYLOAD_VALIDATION_ERROR,
@@ -193,11 +207,14 @@ pub enum ClientError {
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
 	USERNAME_CHANGE_ERROR,
+	FAILED_TO_VERIFY_USER,
 	INVALID_USER_TOKEN,
+	REDIS_GET_KEY_ERROR,
 	DELETE_LOBBY_ERROR,
 	GAME_CANNOT_BE_STARTED,
 	PASSWORD_CHANGE_ERROR,
 	NO_USER_ENTITY_FOUND_FOR_TOKEN,
+	FAILED_TO_SET_REDIS_KEY_WITH_OPTIONS,
 	REDIS_UNWRAP_ERROR,
 	LOBBY_FULL_ERROR,
 	USERNAME_CONTAINS_INVALID_CHARACTER,
@@ -211,4 +228,5 @@ pub enum ClientError {
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
+	INVALID_EMAIL_USER_KEY
 }
