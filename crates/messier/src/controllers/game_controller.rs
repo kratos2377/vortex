@@ -6,10 +6,13 @@ use bson::{doc, Document};
 use futures::TryStreamExt;
 use orion::{constants::GAME_INVITE_EVENT, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
 use redis::{Commands, RedisResult};
+use sea_orm::TryIntoModel;
 use serde_json::{json, Value};
 use errors::Result as APIResult;
+use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
+use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
 use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, SendGameEventAPIPayload, VerifyGameStatusPayload};
 
 
@@ -206,9 +209,17 @@ pub async fn get_ongoing_games_for_user(
     state: State<AppDBState>,
     payload: Json<GetUsersOngoingGamesPayload>
 ) -> APIResult<Json<Value>> {
-    if  payload.user_friends_ids.is_empty() {
+    if  payload.user_id == "" {
         return Err(Error::MissingParamsError)
     }
+
+    let get_user_friends_ids = UsersFriends::find_by_user_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await;
+
+    if get_user_friends_ids.is_err() {
+        return Err(Error::ErrorWhileFetchingUserFriends)
+    }
+
+    let get_user_friends_ids_vec = get_user_friends_ids.unwrap();
 
     //Database name will change 
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
@@ -216,8 +227,9 @@ pub async fn get_ongoing_games_for_user(
     let user_collection = mongo_db.collection::<UserGameRelation>("users");
     let game_collection = mongo_db.collection::<Game>("games");
     let mut game_vec_results: Vec<GetUsersOngoingGamesResponseModel> = vec![];
-    for user_id in payload.user_friends_ids.iter() {
-        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(user_id).unwrap() }, None).await.unwrap();
+    for user_model in get_user_friends_ids_vec.iter() {
+        let usr_model = user_model.clone().try_into_model().unwrap();
+        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(usr_model.friend_id.to_string()).unwrap() }, None).await.unwrap();
         let res: Vec<UserGameRelation> = cursor.try_collect().await.unwrap();
 
         if let Some(game_id) = &res.get(0).unwrap().game_id {
@@ -242,8 +254,8 @@ pub async fn get_ongoing_games_for_user(
     let body = Json(json!({
 		"result": {
 			"success": true,
-            "games": game_vec_results
-		}
+		},
+        "games": game_vec_results
 	}));
 
 	Ok(body)

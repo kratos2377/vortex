@@ -28,22 +28,38 @@ pub async fn send_request(
     state: State<AppDBState>,
 	payload: Json<SendRequestPayload>,
 ) -> APIResult<Json<Value>> {
-    if &payload.user_recieved_id == "" || &payload.user_sent_id == "" || &payload.user_send_username == "" {
+    if &payload.friend_username == ""  || &payload.user_id == "" || &payload.user_username == "" {
         return Err(Error::MissingParamsError);
     }
+
+    let friend_user_result = Users::find_by_username(&payload.friend_username).one(&state.conn).await;
+
+    if friend_user_result.is_err() {
+        return Err(Error::UsernameNotFound)
+    }
+
+    let friend_user_option = friend_user_result.unwrap();
+
+    if friend_user_option.is_none() {
+        return Err(Error::UsernameNotFound)
+    }
+    let mut user_found = friend_user_option.unwrap();
+    
+
+
 
     let new_request_id = Uuid::new_v4();
     let new_friend_request_relation = users_friends_requests::ActiveModel {
         id: Set(new_request_id),
-        user_recieved_id: Set(Uuid::from_str(&payload.user_recieved_id).unwrap()),
-        user_sent_id: Set(Uuid::from_str(&payload.user_sent_id).unwrap()),
+        user_recieved_id: Set(user_found.id),
+        user_sent_id: Set(Uuid::from_str(&payload.user_id).unwrap()),
     };
 
     let kafka_event = UserFriendRequestKafkaEvent {
         friend_request_id: new_request_id.clone(),
-        user_who_send_request_id: payload.user_sent_id.clone(),
-        user_who_send_request_username: payload.user_send_username.clone(),
-        user_who_we_are_sending_event: payload.user_recieved_id.clone(),
+        user_who_send_request_id: payload.user_id.clone(),
+        user_who_send_request_username: payload.user_username.clone(),
+        user_who_we_are_sending_event: user_found.id.to_string().clone(),
     };
     let friend_request_kafka_event = serde_json::to_string(&kafka_event).unwrap();
     let _ = send_event_for_user_topic(&state.producer,&state.context , FRIEND_REQUEST_EVENT.to_string() , friend_request_kafka_event ).await.unwrap();
@@ -304,8 +320,8 @@ pub async fn get_all_users_friends(
     let body = Json(json!({
 		"result": {
 			"success": true,
-            "users": serde_json::to_string(&results_resp).unwrap()
-		}
+		},
+        "friends": serde_json::to_string(&results_resp).unwrap()
 	}));
 
 

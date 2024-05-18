@@ -108,9 +108,9 @@ pub struct ResponseUser {
 // User logic payload
 #[derive( Clone, Debug, Deserialize)]
 pub struct SendRequestPayload {
- pub user_sent_id: String,
- pub user_recieved_id: String,
- pub user_send_username: String,
+   pub user_id: String,
+ pub friend_username: String,
+ pub user_username: String,
 }
 
 #[derive( Clone, Debug, Deserialize)]
@@ -162,7 +162,7 @@ pub struct GetOnlineFriendsResponseModel {
 
 #[derive( Clone, Debug, Deserialize , Serialize)]
 pub struct GetUsersOngoingGamesPayload {
-    pub user_friends_ids: Vec<String>,
+    pub user_id: String,
 }
 
 

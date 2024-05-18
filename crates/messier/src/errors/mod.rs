@@ -33,11 +33,13 @@ pub enum Error {
 	NoUserEntityFoundForToken,
 	PasswordIncorrect,
 	UsernameAlreadyExists,
+	ErrorWhileFetchingUserFriends,
 	UsernameContainsInvalidCharachter,
 	FailedToVerifyUser,
 	EmailAlreadyInUse,
 	FailedToGetKeyFromRedis,
 	PasswordLength,
+	UsernameNotFound,
 	NewPasswordLengthIsSmall,
 	RegistrationPayloadValidationError,
 	UserNameChangeError,
@@ -115,10 +117,14 @@ impl Error {
 			Self::InvalidUserToken => (StatusCode::BAD_REQUEST, ClientError::INVALID_USER_TOKEN),
 			Self::NoUserEntityFoundForToken => (StatusCode::BAD_REQUEST, ClientError::NO_USER_ENTITY_FOUND_FOR_TOKEN),
 
+			Self::UsernameNotFound => (StatusCode::BAD_REQUEST, ClientError::USERNAME_NOT_FOUND),
+
 			//Password Incorrect
 			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
 
 			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
+
+			Self::ErrorWhileFetchingUserFriends => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_FRIENDS),
 
 			//Registration Error
 			Self::UsernameAlreadyExists => (StatusCode::BAD_REQUEST , ClientError::USERNAME_ALREADY_EXISTS),
@@ -213,6 +219,7 @@ pub enum ClientError {
 	DELETE_LOBBY_ERROR,
 	GAME_CANNOT_BE_STARTED,
 	PASSWORD_CHANGE_ERROR,
+	ERROR_WHILE_FETCHING_USER_FRIENDS,
 	NO_USER_ENTITY_FOUND_FOR_TOKEN,
 	FAILED_TO_SET_REDIS_KEY_WITH_OPTIONS,
 	REDIS_UNWRAP_ERROR,
@@ -221,6 +228,7 @@ pub enum ClientError {
 	SAME_PASSWORD_AS_PREVIOUS_ONE,
 	GAME_INVITE_SEND_ERROR,
 	ERROR_WHILE_MAKING_RELATION,
+	USERNAME_NOT_FOUND,
 	WALLET_ADDRESS_SAVE_ERROR,
 	SPECTATE_GAME_JOIN_ERROR,
 	SPECTATE_GAME_LEAVE_ERROR,
