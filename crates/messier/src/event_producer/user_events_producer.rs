@@ -159,7 +159,7 @@ pub async fn create_user_online_events(context: &DynContext, payload: String) ->
 
 pub async fn create_friend_request_event(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let kafka_general_event = KafkaGeneralEvent {
-        topic: "users".to_string(),
+        topic: "user".to_string(),
         payload: payload,
         key: "friend-request-event".to_string(),
     };
@@ -170,7 +170,7 @@ pub async fn create_friend_request_event(context: &DynContext, payload: String) 
 
 pub async fn create_game_invite_event(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let kafka_general_event = KafkaGeneralEvent {
-        topic: "users".to_string(),
+        topic: "user".to_string(),
         payload: payload,
         key: "game-invite-event".to_string(),
     };
@@ -180,7 +180,7 @@ pub async fn create_game_invite_event(context: &DynContext, payload: String) -> 
 
 pub async fn create_user_joined_room_event(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let kafka_general_event = KafkaGeneralEvent {
-        topic: "users".to_string(),
+        topic: "user".to_string(),
         payload: payload,
         key: "user-joined-room".to_string(),
     };
@@ -190,7 +190,7 @@ pub async fn create_user_joined_room_event(context: &DynContext, payload: String
 
 pub async fn create_user_leaved_room_event(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let kafka_general_event = KafkaGeneralEvent {
-        topic: "users".to_string(),
+        topic: "user".to_string(),
         payload: payload,
         key: "user-left-room".to_string(),
     };

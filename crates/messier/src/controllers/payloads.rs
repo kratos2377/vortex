@@ -5,7 +5,9 @@ use uuid::Uuid;
 // Game Payloads
 #[derive(Clone, Debug, Deserialize)]
 pub struct CreateLobbyPayload {
-    pub user_id: String
+    pub user_id: String,
+    pub game_type: String,
+    pub game_name: String,
 }
 
 
@@ -13,6 +15,7 @@ pub struct CreateLobbyPayload {
 pub struct JoinLobbyPayload {
     pub user_id: String,
     pub game_id: String,
+    pub game_name: String,
 }
 
 

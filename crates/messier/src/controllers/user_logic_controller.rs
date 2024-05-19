@@ -13,7 +13,7 @@ use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, us
 use axum::extract::State;
 use axum::Json;
 use errors::Result as APIResult;
-use sea_orm::{ActiveModelTrait, TryIntoModel};
+use sea_orm::{ActiveModelTrait, IntoActiveModel, TryIntoModel};
 use sea_orm::EntityTrait;
 use sea_orm::Set;
 use serde_json::json;
@@ -64,7 +64,7 @@ pub async fn send_request(
     let friend_request_kafka_event = serde_json::to_string(&kafka_event).unwrap();
     let _ = send_event_for_user_topic(&state.producer,&state.context , FRIEND_REQUEST_EVENT.to_string() , friend_request_kafka_event ).await.unwrap();
 
-    let _result = new_friend_request_relation.save(&state.conn).await.unwrap();
+    let _result = new_friend_request_relation.insert(&state.conn).await.unwrap();
 
     let body = Json(json!({
 		"result": {
@@ -391,11 +391,16 @@ pub async fn change_user_username(
         return Err(Error::UsernameAlreadyExists)
     }
 
-    let mut user_model: users::ActiveModel = user.unwrap().into();
-    user_model.username = Set(payload.username);
+    let  user_model = Users::find_by_id(Uuid::from_str(&payload.user_id).unwrap()).one(&state.conn).await;
+
+    if user_model.is_err() {
+        return Err(Error::UsernameNotFound)
+    }
+    let mut new_user_model = user_model.unwrap().unwrap().into_active_model();
+    new_user_model.username  = Set(payload.username);
 
 
-    let res = user_model.update(&state.conn).await;
+    let res = new_user_model.update(&state.conn).await;
 
     if res.is_err() {
         return Err(Error::UserNameChangeError)

@@ -6,10 +6,11 @@ use uuid::Uuid;
 
 
 
-#[derive( Deserialize , Clone)]
+#[derive( Serialize , Deserialize , Clone)]
 pub struct Game {
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
     pub id: Uuid,
+    pub user_count: i64,
     pub name: String,
     pub game_type: String,
     pub is_staked: bool,
@@ -21,7 +22,7 @@ pub struct Game {
 }
 
 
-#[derive(Deserialize , Clone)]
+#[derive(Serialize, Deserialize , Clone)]
 pub struct PokerState { 
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
     pub id: Uuid,

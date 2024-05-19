@@ -177,7 +177,6 @@ pub async fn do_listen(
             Ok(message) => {
  
             let topic = message.topic();
-
             if topic.to_string() == topic_name {
                 
              if let Some(key_name) = message.key() {

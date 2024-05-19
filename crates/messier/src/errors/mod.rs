@@ -38,10 +38,14 @@ pub enum Error {
 	FailedToVerifyUser,
 	EmailAlreadyInUse,
 	FailedToGetKeyFromRedis,
+	ErrorWhileUpdatingMongoUserAndGame,
+	LobbyIsFull,
 	PasswordLength,
 	UsernameNotFound,
 	NewPasswordLengthIsSmall,
+	ErrorWhileCreatingEntities,
 	RegistrationPayloadValidationError,
+	ErrorWhileFetchingGameDetails,
 	UserNameChangeError,
 	SendEmailError,
 	CreateLobbyError,
@@ -113,6 +117,8 @@ impl Error {
 			Self::EntityNotFound => (StatusCode::BAD_REQUEST, ClientError::ENTITY_NOT_FOUND),
 			Self::PasswordChangeError => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_CHANGE_ERROR),
 
+			Self::ErrorWhileUpdatingMongoUserAndGame => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_UPDATING_MONGO_USER_AND_GAME),
+
 			//Invalid Token
 			Self::InvalidUserToken => (StatusCode::BAD_REQUEST, ClientError::INVALID_USER_TOKEN),
 			Self::NoUserEntityFoundForToken => (StatusCode::BAD_REQUEST, ClientError::NO_USER_ENTITY_FOUND_FOR_TOKEN),
@@ -122,14 +128,20 @@ impl Error {
 			//Password Incorrect
 			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
 
+			Self::ErrorWhileFetchingGameDetails => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_GAME_DETAILS),
+
 			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
 
 			Self::ErrorWhileFetchingUserFriends => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_FRIENDS),
+
+			Self::ErrorWhileCreatingEntities => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_CREATING_ENTITIES),
 
 			//Registration Error
 			Self::UsernameAlreadyExists => (StatusCode::BAD_REQUEST , ClientError::USERNAME_ALREADY_EXISTS),
 			Self::EmailAlreadyInUse => (StatusCode::BAD_REQUEST, ClientError::EMAIL_IN_USE),
 			Self::UsernameContainsInvalidCharachter => (StatusCode::BAD_REQUEST, ClientError::USERNAME_CONTAINS_INVALID_CHARACTER),
+
+			Self::LobbyIsFull => (StatusCode::BAD_REQUEST, ClientError::LOBBY_FULL_ERROR),
 
 			// Validation Error
 			Self::PasswordLength => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_LENGTH_SMALL),
@@ -201,6 +213,9 @@ pub enum ClientError {
 	LOGIN_FAIL,
 	REGISTRATION_FAIL,
 	MISSING_PARAMS_ERROR,
+	ERROR_WHILE_CREATING_ENTITIES,
+	ERROR_WHILE_FETCHING_GAME_DETAILS,
+	ERROR_WHILE_UPDATING_MONGO_USER_AND_GAME,
 	ENTITY_NOT_FOUND,
 	PASSWORD_INCORRECT,
 	USERNAME_ALREADY_EXISTS,
