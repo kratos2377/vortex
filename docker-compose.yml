@@ -24,18 +24,57 @@ services:
     ports:
       - "6379:6379"
 
-  mongo:
+  mongodbprim:
     image: mongo:latest
     restart: always
-    hostname: mongodb
-    container_name: mongodb
+    hostname: mongodbprim
+    container_name: mongodbprim
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=rootpasswd
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=adminpassword
       - MONGO_INITDB_DATABASE=user_game_events_db
     mem_limit: 768m
+
+  # mongodb1:
+  #   image: mongo:latest
+  #   restart: always
+  #   hostname: mongodb1
+  #   container_name: mongodb1
+  #   ports:
+  #     - "27017:27017"
+  #   # environment:
+  #     # - MONGO_INITDB_ROOT_USERNAME=root
+  #     # - MONGO_INITDB_ROOT_PASSWORD=rootpasswd
+  #     # - MONGO_INITDB_DATABASE=user_game_events_db
+  #   command: mongod --replSet replica-set-1
+  #   mem_limit: 768m
+
+  # mongoinit:
+  #   image: mongo:latest
+  #   # Exit after executing the command
+  #   restart: "no"
+  #   hostname: minit
+  #   container_name: minit
+  #   depends_on:
+  #     - mongodb1
+  #   command: >
+  #     mongosh --host mongodb1:27017 --eval 
+  #     '
+  #     db = (new Mongo("mongodb1:27017")).getDB("user_game_events_db");
+  #     config = {
+  #     "_id" : "replica-set-1",
+  #     "members" : [
+  #       {
+  #         "_id" : 0,
+  #         "host" : "mongodb1:27017"
+  #       }
+  #     ]
+  #     };
+  #     rs.initiate(config);
+  #     '
+  #   mem_limit: 256m
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.2.2

@@ -265,8 +265,6 @@ pub async fn verify_user(
 
     let user_key_from_redis_rs= get_key_from_redis(payload.id.to_string() + "-email-key", state.context.get_redis_db_client());
 
-    println!("KEY RECV IS");
-    println!("{:?}" , user_key_from_redis_rs);
     if user_key_from_redis_rs.is_err() {
         return Err(Error::FailedToGetKeyFromRedis)
     }

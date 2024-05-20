@@ -11,6 +11,7 @@ pub struct Game {
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
     pub id: Uuid,
     pub user_count: i64,
+    pub host_id: String,
     pub name: String,
     pub game_type: String,
     pub is_staked: bool,

@@ -321,7 +321,7 @@ pub async fn get_all_users_friends(
 		"result": {
 			"success": true,
 		},
-        "friends": serde_json::to_string(&results_resp).unwrap()
+        "friends": results_resp
 	}));
 
 

@@ -1,5 +1,5 @@
 mongo_db:
-  url: mongodb://localhost:27017/accommodation-service?replicaSet=replica-set-1
+  url: mongodb://admin:adminpassword@localhost/user_game_events_db?authSource=admin
   connection: 
     pool:
       min: 1

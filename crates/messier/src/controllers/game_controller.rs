@@ -49,6 +49,7 @@ pub async fn create_lobby(
     let game_doc = Game {
         id: game_id,
         user_count: 1,
+        host_id: payload.user_id.clone(),
         name: payload.game_name.clone(),
         game_type: payload.game_name.clone(),
         is_staked: payload.game_type == "staked",
@@ -137,7 +138,8 @@ pub async fn join_lobby(
     let body = Json(json!({
 		"result": {
 			"success": true
-		}
+		},
+        "game_host_id": game.host_id,
 	}));
 
 	Ok(body)
