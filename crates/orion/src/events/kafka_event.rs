@@ -37,6 +37,7 @@ pub struct UserGameInviteKafkaEvent {
     pub user_who_send_request_username: String,
     pub user_who_we_are_sending_event: String,
     pub game_id: String,
-    pub game_name: String
+    pub game_name: String,
+    pub game_type: String,
 }
 

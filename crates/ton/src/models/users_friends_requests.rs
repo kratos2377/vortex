@@ -10,6 +10,7 @@ pub struct Model {
     pub id: Uuid,
     pub user_sent_id: Uuid,
     pub user_recieved_id: Uuid,
+    pub user_sent_username: String,
 }
 
 

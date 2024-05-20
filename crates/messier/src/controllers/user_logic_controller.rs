@@ -53,6 +53,7 @@ pub async fn send_request(
         id: Set(new_request_id),
         user_recieved_id: Set(user_found.id),
         user_sent_id: Set(Uuid::from_str(&payload.user_id).unwrap()),
+        user_sent_username: Set(payload.friend_username.clone()),
     };
 
     let kafka_event = UserFriendRequestKafkaEvent {
@@ -156,7 +157,11 @@ pub async fn get_user_friend_requests(
     }
 
     // Add custom Query to return all users id,username,and any other details
-    let user_friends_ = users_friends::Entity::find_by_user_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
+    let user_friends_ = users_friends_requests::Entity::find_by_user_received_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await;
+
+    if user_friends_.is_err() {
+        return Err(Error::ErrorWhileFetchingUserFriendsRequests)
+    }
 
 
 
@@ -164,7 +169,7 @@ pub async fn get_user_friend_requests(
 		"result": {
 			"success": true
 		},
-        "friends": user_friends_,
+        "friends": user_friends_.unwrap(),
 	}));
 
 

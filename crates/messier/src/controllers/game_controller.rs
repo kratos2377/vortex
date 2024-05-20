@@ -152,7 +152,7 @@ pub async fn send_game_invite(
 	payload: Json<SendGameEventAPIPayload>,
 ) -> APIResult<Json<Value>> {
 
-    if &payload.game_id == "" || &payload.game_name == "" || payload.user_receiving_id == "" || payload.user_sending_id == "" || payload.user_sending_username == "" {
+    if &payload.game_type== "" || &payload.game_id == "" || &payload.game_name == "" || payload.user_receiving_id == "" || payload.user_sending_id == "" || payload.user_sending_username == "" {
         return Err(Error::MissingParamsError)
     }
 
@@ -162,6 +162,7 @@ pub async fn send_game_invite(
         user_who_we_are_sending_event: payload.user_receiving_id.clone(),
         game_id: payload.game_id.clone(),
         game_name: payload.game_name.clone(),
+        game_type: payload.game_type.clone(),
 
     };
     let res = send_event_for_user_topic(&state.producer , &state.context , GAME_INVITE_EVENT.to_string() , serde_json::to_string(&kafka_event).unwrap() ).await;

@@ -33,6 +33,7 @@ pub struct SendGameEventAPIPayload {
     pub user_sending_username: String,
     pub user_sending_id: String,
     pub user_receiving_id: String,
+    pub game_type: String,
 }
 
 

@@ -27,6 +27,7 @@ pub enum Error {
 	RegistrationFail,
 	MissingParamsError,
 	FailedToSetRedisKeyWithOptions,
+	ErrorWhileFetchingUserFriendsRequests,
 	InvalidUserToken,
 	EntityNotFound,
 	SamePasswordAsPreviousOne,
@@ -135,7 +136,8 @@ impl Error {
 			Self::ErrorWhileFetchingUserFriends => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_FRIENDS),
 
 			Self::ErrorWhileCreatingEntities => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_CREATING_ENTITIES),
-
+			
+			Self::ErrorWhileFetchingUserFriendsRequests => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_FRIENDS_REQUESTS),
 			//Registration Error
 			Self::UsernameAlreadyExists => (StatusCode::BAD_REQUEST , ClientError::USERNAME_ALREADY_EXISTS),
 			Self::EmailAlreadyInUse => (StatusCode::BAD_REQUEST, ClientError::EMAIL_IN_USE),
@@ -216,6 +218,7 @@ pub enum ClientError {
 	ERROR_WHILE_CREATING_ENTITIES,
 	ERROR_WHILE_FETCHING_GAME_DETAILS,
 	ERROR_WHILE_UPDATING_MONGO_USER_AND_GAME,
+	ERROR_WHILE_FETCHING_FRIENDS_REQUESTS,
 	ENTITY_NOT_FOUND,
 	PASSWORD_INCORRECT,
 	USERNAME_ALREADY_EXISTS,
