@@ -18,6 +18,13 @@ pub struct JoinLobbyPayload {
     pub game_name: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct LeaveLobbyPayload {
+    pub user_id: String,
+    pub game_id: String,
+    pub game_name: String,
+}
+
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct VerifyGameStatusPayload {

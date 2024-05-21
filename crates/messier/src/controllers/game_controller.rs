@@ -97,7 +97,8 @@ pub async fn join_lobby(
     }
 
     let cnt = get_game_result.unwrap();
-    let rsp: RedisResult<()> = set_key_from_redis(&state.context.get_redis_db_client(), payload.game_id.to_string() + "-game-id-count", (i64::from_str(&cnt).unwrap()+1).to_string());
+    let user_cnt_id = (i64::from_str(&cnt).unwrap()+1).to_string();
+    let rsp: RedisResult<()> = set_key_from_redis(&state.context.get_redis_db_client(), payload.game_id.to_string() + "-game-id-count", user_cnt_id.clone());
    if rsp.is_err() {
     return Err(Error::LobbyFull)
    }
@@ -140,6 +141,7 @@ pub async fn join_lobby(
 			"success": true
 		},
         "game_host_id": game.host_id,
+        "user_count_id": user_cnt_id
 	}));
 
 	Ok(body)
@@ -181,27 +183,35 @@ pub async fn send_game_invite(
 
 }
 
-pub async fn remove_user_from_lobby(
+pub async fn leave_lobby(
     state: State<AppDBState>,
 	payload: Json<JoinLobbyPayload>,
 ) -> APIResult<Json<Value>> { 
 
-    let arc_redis_client = state.context.get_redis_db_client();
-    let mut redisConnection  = arc_redis_client.lock().unwrap();
-
-    let get_game_result = redisConnection.hkeys(&payload.game_id);
-    if get_game_result.is_err() {
-        return Err(Error::RemoveFromLobbyError)
+    if payload.user_id == "" || payload.game_id == "" || payload.game_name =="" {
+        return Err(Error::MissingParamsError)
     }
 
-   let lobby_user_ids: Vec<String> = get_game_result.unwrap();
-    let new_lobby_user_ids: Vec<_> = lobby_user_ids.into_iter().filter(|x| x != &payload.user_id).collect();
-    let create_result: RedisResult<()> = redisConnection.set(&payload.game_id, new_lobby_user_ids);
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    
 
-    if create_result.is_err() {
-        return Err(Error::RemoveFromLobbyError)
+    let user_collection = mongo_db.collection::<UserGameRelation>("users");
+    let game_collection = mongo_db.collection::<Game>("games");
+
+    let user_rsp = user_collection.delete_one(doc! { "game_id": payload.game_id.clone(), "user_id": payload.user_id.clone() }, None).await;
+    
+    let game_rsp = game_collection.update_one(doc! { "id": payload.game_id.clone() }, doc! { "$inc": { "user_count": -1 } }, None).await;
+    
+    if user_rsp.is_err() || game_rsp.is_err() {
+        return Err(Error::ErrorWhileLeavingLobby)
     }
 
+    // let res = send_event_for_user_topic(&state.producer , &state.context , GAME_INVITE_EVENT.to_string() , serde_json::to_string(&kafka_event).unwrap() ).await;
+
+
+    // if res.is_err() {
+    //     return Err(Error::ErrorWhileSendingLeaveKafkaEvent)
+    // }
     let body = Json(json!({
 		"result": {
 			"success": true

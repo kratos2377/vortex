@@ -21,7 +21,7 @@ pub async fn send_game_stake_events_request() {
 }
 
 
-pub async fn send_game_events(
+pub async fn send_game_move_events(
     context: &DynContext,
     game_event_payload: GameEventPayload,
     socket_id: String,

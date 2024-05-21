@@ -11,20 +11,6 @@ use uuid::Uuid;
 use crate::context::context::DynContext;
 
 
-
-
-pub async fn send_user_online_event() {
-todo!()
-}
-
-pub async fn send_user_friend_request_event() {
-todo!()
-}
-
-pub async fn send_game_invite_request_to_user() {
-    todo!()
-}
-
 // Make these events name into const static strings
 pub async fn send_event_for_user_topic(
     producer: &FutureProducer,

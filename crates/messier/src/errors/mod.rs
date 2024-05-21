@@ -32,9 +32,11 @@ pub enum Error {
 	EntityNotFound,
 	SamePasswordAsPreviousOne,
 	NoUserEntityFoundForToken,
+	ErrorWhileSendingLeaveKafkaEvent,
 	PasswordIncorrect,
 	UsernameAlreadyExists,
 	ErrorWhileFetchingUserFriends,
+	ErrorWhileLeavingLobby,
 	UsernameContainsInvalidCharachter,
 	FailedToVerifyUser,
 	EmailAlreadyInUse,
@@ -133,9 +135,13 @@ impl Error {
 
 			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
 
+			Self::ErrorWhileSendingLeaveKafkaEvent => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_SENDING_KAFKA_EVENT),
+
 			Self::ErrorWhileFetchingUserFriends => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_FRIENDS),
 
 			Self::ErrorWhileCreatingEntities => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_CREATING_ENTITIES),
+
+			Self::ErrorWhileLeavingLobby => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_LEAVING_LOBBY),
 			
 			Self::ErrorWhileFetchingUserFriendsRequests => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_FRIENDS_REQUESTS),
 			//Registration Error
@@ -220,6 +226,7 @@ pub enum ClientError {
 	ERROR_WHILE_UPDATING_MONGO_USER_AND_GAME,
 	ERROR_WHILE_FETCHING_FRIENDS_REQUESTS,
 	ENTITY_NOT_FOUND,
+	ERROR_WHILE_LEAVING_LOBBY,
 	PASSWORD_INCORRECT,
 	USERNAME_ALREADY_EXISTS,
 	FAILED_TO_GET_KEY_FROM_REDIS,
@@ -228,6 +235,7 @@ pub enum ClientError {
 	REGISTRATION_PAYLOAD_VALIDATION_ERROR,
 	SEND_EMAIL_ERROR,
 	CREATE_LOBBY_ERROR,
+	ERROR_WHILE_SENDING_KAFKA_EVENT,
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
 	USERNAME_CHANGE_ERROR,
