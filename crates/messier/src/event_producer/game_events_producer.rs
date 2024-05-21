@@ -14,6 +14,13 @@ pub struct GameEventPayload {
     pub game_id: String
 }
 
+#[derive(Clone , Deserialize , Serialize)]
+pub struct UserReadyEventPayload {
+    pub user_id: String,
+    pub username: String,
+    pub game_id: String
+}
+
 
 
 pub async fn send_game_stake_events_request() {
