@@ -27,12 +27,16 @@ pub enum Error {
 	RegistrationFail,
 	MissingParamsError,
 	FailedToSetRedisKeyWithOptions,
+	ErrorWhileRetrievingPlayersStatus,
+	ErrorWhileUpdatingPlayerStatus,
 	ErrorWhileFetchingUserFriendsRequests,
 	InvalidUserToken,
 	EntityNotFound,
 	SamePasswordAsPreviousOne,
+	InvalidStatusSendAsPayload,
 	NoUserEntityFoundForToken,
 	ErrorWhileSendingLeaveKafkaEvent,
+	NotAllPlayersHaveReadyStatus,
 	PasswordIncorrect,
 	UsernameAlreadyExists,
 	ErrorWhileFetchingUserFriends,
@@ -135,11 +139,16 @@ impl Error {
 
 			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
 
+			Self::ErrorWhileRetrievingPlayersStatus => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_RETRIEVING_PLAYERS_STATUS),
+
 			Self::ErrorWhileSendingLeaveKafkaEvent => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_SENDING_KAFKA_EVENT),
 
 			Self::ErrorWhileFetchingUserFriends => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_FRIENDS),
 
 			Self::ErrorWhileCreatingEntities => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_CREATING_ENTITIES),
+			Self::InvalidStatusSendAsPayload => (StatusCode::BAD_REQUEST, ClientError::INVALID_STATUS_SEND_AS_PAYLOAD),
+
+			Self::NotAllPlayersHaveReadyStatus => (StatusCode::BAD_REQUEST, ClientError::NOT_ALL_PLAYERS_HAVE_READY_STATUS),
 
 			Self::ErrorWhileLeavingLobby => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_LEAVING_LOBBY),
 			
@@ -187,6 +196,8 @@ impl Error {
 			//Address Error
 			Self::WalletAddressSaveError => (StatusCode::BAD_REQUEST, ClientError::WALLET_ADDRESS_SAVE_ERROR),
 
+			Self::ErrorWhileUpdatingPlayerStatus => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_UPDATING_PLAYER_STATUS),
+
 			// Spectate Game join error
 			Self::SpectateGameJoinError => (StatusCode::BAD_REQUEST , ClientError::SPECTATE_GAME_JOIN_ERROR),
 			Self::SpectateGameLeaveError => (StatusCode::BAD_REQUEST , ClientError::SPECTATE_GAME_LEAVE_ERROR),
@@ -221,10 +232,12 @@ pub enum ClientError {
 	LOGIN_FAIL,
 	REGISTRATION_FAIL,
 	MISSING_PARAMS_ERROR,
+	INVALID_STATUS_SEND_AS_PAYLOAD,
 	ERROR_WHILE_CREATING_ENTITIES,
 	ERROR_WHILE_FETCHING_GAME_DETAILS,
 	ERROR_WHILE_UPDATING_MONGO_USER_AND_GAME,
 	ERROR_WHILE_FETCHING_FRIENDS_REQUESTS,
+	ERROR_WHILE_UPDATING_PLAYER_STATUS,
 	ENTITY_NOT_FOUND,
 	ERROR_WHILE_LEAVING_LOBBY,
 	PASSWORD_INCORRECT,
@@ -238,6 +251,7 @@ pub enum ClientError {
 	ERROR_WHILE_SENDING_KAFKA_EVENT,
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
+	NOT_ALL_PLAYERS_HAVE_READY_STATUS,
 	USERNAME_CHANGE_ERROR,
 	FAILED_TO_VERIFY_USER,
 	INVALID_USER_TOKEN,
@@ -254,6 +268,7 @@ pub enum ClientError {
 	SAME_PASSWORD_AS_PREVIOUS_ONE,
 	GAME_INVITE_SEND_ERROR,
 	ERROR_WHILE_MAKING_RELATION,
+	ERROR_WHILE_RETRIEVING_PLAYERS_STATUS,
 	USERNAME_NOT_FOUND,
 	WALLET_ADDRESS_SAVE_ERROR,
 	SPECTATE_GAME_JOIN_ERROR,

@@ -32,6 +32,14 @@ pub struct VerifyGameStatusPayload {
     pub game_name: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct UpdatePlayerStatusPayload {
+    pub game_id: String,
+    pub user_id: String,
+    pub game_name: String,
+    pub status: String,
+}
+
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SendGameEventAPIPayload {

@@ -4,7 +4,7 @@ use crate::{context, errors::{self, Error}, event_producer::user_events_producer
 use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
 use bson::{doc, Document};
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use orion::{constants::GAME_INVITE_EVENT, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
@@ -15,7 +15,7 @@ use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, SendGameEventAPIPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, SendGameEventAPIPayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -44,6 +44,7 @@ pub async fn create_lobby(
         user_id: Uuid::from_str(&payload.user_id).unwrap(),
         game_id: Some(game_id.to_string().clone()),
         player_type: "host".to_string(),
+        player_status: "not-ready".to_string(),
     };
 
     let game_doc = Game {
@@ -127,6 +128,7 @@ pub async fn join_lobby(
     user_id: Uuid::from_str(&payload.user_id).unwrap(),
     game_id: Some(payload.game_id.clone()),
     player_type: "player".to_string(),
+    player_status: "not-ready".to_string(),
 };
 
    let user_insert_res = user_collection.insert_one(user_doc, None).await;
@@ -334,12 +336,79 @@ pub async fn get_current_state_of_game(
     let body = Json(json!({
 		"result": {
 			"success": true,
-            "game_state": game_current_state
-		}
+		},
+        "game_state": game_current_state
 	}));
 
 	Ok(body)
 }
+
+
+pub async fn update_player_status(
+    state: State<AppDBState>,
+    payload: Json<UpdatePlayerStatusPayload>
+) -> APIResult<Json<Value>> {
+        if &payload.game_id == "" || &payload.game_name == "" || &payload.user_id == "" {
+            return Err(Error::MissingParamsError)
+        }
+        let status_up = &payload.status.to_ascii_lowercase();
+        if  status_up != "ready" || status_up != "not-ready" {
+            return Err(Error::InvalidStatusSendAsPayload)
+        }
+
+        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+        let user_collection = mongo_db.collection::<UserGameRelation>("users");
+        let user_model = user_collection.update_one(doc! { "user_id": payload.user_id.clone(), "game_id": payload.game_id.clone()}, doc! { "$set": doc! {"player_status": payload.status.to_ascii_lowercase()} } ,None).await;
+       
+if user_model.is_err() {
+    return Err(Error::ErrorWhileUpdatingPlayerStatus)
+}
+
+        let body = Json(json!({
+            "result": {
+                "success": true
+            }
+        }));
+    
+        Ok(body)
+}
+
+
+
+pub async fn start_game(
+    state: State<AppDBState>,
+    payload: Json<VerifyGameStatusPayload>
+) -> APIResult<Json<Value>> {
+        if &payload.game_id == "" || &payload.game_name == "" {
+            return Err(Error::MissingParamsError)
+        }
+
+        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+        let user_collection = mongo_db.collection::<UserGameRelation>("users");
+        let user_vec = user_collection.find(doc! { "game_id": payload.game_id.clone()}, None).await;
+       
+if user_vec.is_err() {
+    return Err(Error::ErrorWhileRetrievingPlayersStatus)
+}
+let user_vec: Vec<UserGameRelation> = user_vec.unwrap().try_collect().await.unwrap();
+
+
+
+for user in user_vec.iter() {
+    if user.player_status == "not-ready" {
+        return Err(Error::NotAllPlayersHaveReadyStatus);
+    }
+}
+
+        let body = Json(json!({
+            "result": {
+                "success": true
+            }
+        }));
+    
+        Ok(body)
+}
+
 
 
 
