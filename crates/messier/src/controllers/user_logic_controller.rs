@@ -22,8 +22,6 @@ use uuid::Uuid;
 
 use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, ChangeUserPasswordPayload, ChangeUserUsernamePayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, SendRequestPayload};
 
-
-
 pub async fn send_request(
     state: State<AppDBState>,
 	payload: Json<SendRequestPayload>,
@@ -257,7 +255,7 @@ pub async fn delete_wallet_address(
 }
 
 
-pub async fn get_all_users_friends(
+pub async fn get_user_online_friends(
     State(state): State<AppDBState>,
 	Json(payload): Json<GetOnlineFriendsPayload>,
 ) -> APIResult<Json<Value>> {
@@ -292,25 +290,19 @@ pub async fn get_all_users_friends(
             let user_type_details = friend_result.unwrap().try_into_model().unwrap();
 
             let mut redisConnection  = arc_redis_client.lock().unwrap();
-            let does_friend_key_exist_in_redis: RedisResult<()> = redisConnection.hkeys(user_type_details.id.to_string().clone());
+            let does_friend_key_exist_in_redis: RedisResult<String> = redisConnection.hkeys(user_type_details.id.to_string().clone());
 
-            let online_friend_response=  if does_friend_key_exist_in_redis.is_err() {
-                GetOnlineFriendsResponseModel {
-                    user_id: user_type_details.id.to_string(),
-                    username: user_type_details.username,
-                    first_name: user_type_details.first_name,
-                    last_name: user_type_details.last_name,
-                    is_user_online: false,
-                }
-            } else {
-                GetOnlineFriendsResponseModel {
+            if does_friend_key_exist_in_redis.is_err() || does_friend_key_exist_in_redis.unwrap() != "online" {
+               continue;
+            }
+                let online_friend_response=   GetOnlineFriendsResponseModel {
                     user_id: user_type_details.id.to_string(),
                     username: user_type_details.username,
                     first_name: user_type_details.first_name,
                     last_name: user_type_details.last_name,
                     is_user_online: true,
-                }
-            };
+                };
+         
 
             
 

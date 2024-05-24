@@ -1,6 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, RedisResult};
 use sea_orm::TryIntoModel;
@@ -34,6 +34,10 @@ pub async fn send_event_for_user_topic(
 
         USER_LEFT_ROOM => {
             create_user_leaved_room_event(context , payload).await
+        },
+
+        VERIFYING_GAME_STATUS => {
+            vec![]
         },
 
         _ => {vec![]}
@@ -78,6 +82,16 @@ pub async fn send_event_for_user_topic(
 
 }
 
+pub async fn create_user_general_event(event_name: &str, context: &DynContext, payload: String ) -> Vec<KafkaGeneralEvent> {
+   let new_kafka_event = KafkaGeneralEvent {
+        topic: "user".to_string(),
+        payload: serde_json::to_string(&new_user_online_kafka_event).unwrap(),
+        key: event_name.to_string(),
+    };
+
+    return vec![new_kafka_event]
+   
+}
 
 pub async fn create_user_online_events(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let data: UserConnectionEventPayload = serde_json::from_str(&payload).unwrap();
@@ -114,9 +128,9 @@ pub async fn create_user_online_events(context: &DynContext, payload: String) ->
            let user_type_details = friend_result.unwrap().try_into_model().unwrap();
 
            let mut redisConnection  = arc_redis_client.lock().unwrap();
-           let does_friend_key_exist_in_redis: RedisResult<()> = redisConnection.hkeys(user_type_details.id.to_string().clone());
+           let does_friend_key_exist_in_redis: RedisResult<String> = redisConnection.hkeys(user_type_details.id.to_string().clone());
 
-           if does_friend_key_exist_in_redis.is_err() {
+           if does_friend_key_exist_in_redis.is_err() || does_friend_key_exist_in_redis.unwrap() != "online" {
             continue;
            }
 

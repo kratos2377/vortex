@@ -42,3 +42,9 @@ pub struct UserKafkaPayload {
     pub user_id: String,
     pub socket_id: String,
 }
+
+#[derive(Clone , Deserialize , Serialize)]
+pub struct VerifyingStatusPayload {
+    pub user_id: String,
+    pub game_id: String
+}
