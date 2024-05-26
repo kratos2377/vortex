@@ -40,7 +40,7 @@ pub async fn send_user_friend_request_event_mqtt(cli: &mqtt::Client , payload: S
 
     let mqtt_payload = serde_json::to_string(&MQTTEventModel{ event_name: FRIEND_REQUEST_EVENT.to_string(), payload }).unwrap();
     let mqtt_user_message = mqtt::message::Message::new(MQTT_USER_EVENTS.to_string() + &friend_request_payload.user_who_we_are_sending_event ,  mqtt_payload, 0);
-    cli.publish(mqtt_user_message).unwrap();
+      cli.publish(mqtt_user_message).unwrap();
 
 } 
 

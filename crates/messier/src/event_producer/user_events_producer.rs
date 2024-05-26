@@ -82,16 +82,16 @@ pub async fn send_event_for_user_topic(
 
 }
 
-pub async fn create_user_general_event(event_name: &str, context: &DynContext, payload: String ) -> Vec<KafkaGeneralEvent> {
-   let new_kafka_event = KafkaGeneralEvent {
-        topic: "user".to_string(),
-        payload: serde_json::to_string(&new_user_online_kafka_event).unwrap(),
-        key: event_name.to_string(),
-    };
+// pub async fn create_user_general_event(event_name: &str, context: &DynContext, payload: String ) -> Vec<KafkaGeneralEvent> {
+//    let new_kafka_event = KafkaGeneralEvent {
+//         topic: "user".to_string(),
+//         payload: serde_json::to_string(&new_user_online_kafka_event).unwrap(),
+//         key: event_name.to_string(),
+//     };
 
-    return vec![new_kafka_event]
+//     return vec![new_kafka_event]
    
-}
+// }
 
 pub async fn create_user_online_events(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
     let data: UserConnectionEventPayload = serde_json::from_str(&payload).unwrap();

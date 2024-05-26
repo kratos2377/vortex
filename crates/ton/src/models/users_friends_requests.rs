@@ -43,4 +43,8 @@ impl Entity {
     pub fn find_by_user_received_id(id: &Uuid) -> Select<Entity> {
         Self::find().filter(Column::UserRecievedId.eq(*id))
     }
+
+    pub fn find_by_user_id_and_received_id(user_id: &Uuid, received_id: &Uuid) -> Select<Entity> {
+        Self::find().filter(Column::UserSentId.eq(*user_id)).filter(Column::UserRecievedId.eq(*received_id))
+    }
 }

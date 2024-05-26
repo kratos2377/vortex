@@ -106,8 +106,11 @@ pub fn create_ws_game_events(socket: SocketRef) {
 
 
 pub async fn add_key_in_redis(redis_client: Arc<Mutex<Connection>> , key: String , value: String) {
-
     let mut redis_conn = redis_client.lock().unwrap();
-    let _: RedisResult<()> = redis_conn.set(key, value);
+    let res: RedisResult<()> = redis_conn.set(key, value);
 
+    if res.is_err() {
+        println!("Error occured while persisting key in redis");
+        println!("{:?}", res);
+    }
 }

@@ -30,9 +30,11 @@ pub enum Error {
 	ErrorWhileRetrievingPlayersStatus,
 	ErrorWhileUpdatingPlayerStatus,
 	ErrorWhileFetchingUserFriendsRequests,
+	ErrorWhileSendingRequest,
 	InvalidUserToken,
 	EntityNotFound,
 	SamePasswordAsPreviousOne,
+	FriendRequestAlreadySent,
 	InvalidStatusSendAsPayload,
 	NoUserEntityFoundForToken,
 	ErrorWhileSendingLeaveKafkaEvent,
@@ -129,7 +131,7 @@ impl Error {
 			//Invalid Token
 			Self::InvalidUserToken => (StatusCode::BAD_REQUEST, ClientError::INVALID_USER_TOKEN),
 			Self::NoUserEntityFoundForToken => (StatusCode::BAD_REQUEST, ClientError::NO_USER_ENTITY_FOUND_FOR_TOKEN),
-
+			Self::ErrorWhileSendingRequest => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_SENDING_REQUEST),
 			Self::UsernameNotFound => (StatusCode::BAD_REQUEST, ClientError::USERNAME_NOT_FOUND),
 
 			//Password Incorrect
@@ -160,6 +162,7 @@ impl Error {
 
 			Self::LobbyIsFull => (StatusCode::BAD_REQUEST, ClientError::LOBBY_FULL_ERROR),
 
+			Self::FriendRequestAlreadySent => (StatusCode::BAD_REQUEST, ClientError::FRIEND_REQUEST_ALREADY_SENT),
 			// Validation Error
 			Self::PasswordLength => (StatusCode::BAD_REQUEST, ClientError::PASSWORD_LENGTH_SMALL),
 			Self::RegistrationPayloadValidationError => (StatusCode::BAD_REQUEST, ClientError::REGISTRATION_PAYLOAD_VALIDATION_ERROR),
@@ -241,8 +244,10 @@ pub enum ClientError {
 	ENTITY_NOT_FOUND,
 	ERROR_WHILE_LEAVING_LOBBY,
 	PASSWORD_INCORRECT,
+	ERROR_WHILE_SENDING_REQUEST,
 	USERNAME_ALREADY_EXISTS,
 	FAILED_TO_GET_KEY_FROM_REDIS,
+	FRIEND_REQUEST_ALREADY_SENT,
 	EMAIL_IN_USE,
 	PASSWORD_LENGTH_SMALL,
 	REGISTRATION_PAYLOAD_VALIDATION_ERROR,

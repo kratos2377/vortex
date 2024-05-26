@@ -272,8 +272,16 @@ pub async fn get_ongoing_games_for_user(
     let mut game_vec_results: Vec<GetUsersOngoingGamesResponseModel> = vec![];
     for user_model in get_user_friends_ids_vec.iter() {
         let usr_model = user_model.clone().try_into_model().unwrap();
-        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(usr_model.friend_id.to_string()).unwrap() }, None).await.unwrap();
-        let res: Vec<UserGameRelation> = cursor.try_collect().await.unwrap();
+        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(usr_model.friend_id.to_string()).unwrap() }, None).await;
+      
+        if cursor.is_err() {
+            continue;
+        }
+        let res: Vec<UserGameRelation> = cursor.unwrap().try_collect().await.unwrap();
+
+        if res.len() == 0 {
+            break;
+        }
 
         if let Some(game_id) = &res.get(0).unwrap().game_id {
 

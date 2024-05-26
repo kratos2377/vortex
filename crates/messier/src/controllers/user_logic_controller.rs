@@ -43,15 +43,21 @@ pub async fn send_request(
     }
     let mut user_found = friend_user_option.unwrap();
     
+    let user_friend_relation =  UsersFriendsRequests::find_by_user_id_and_received_id(&Uuid::from_str(&payload.user_id).unwrap(), &user_found.id.clone()).one(&state.conn).await;
 
+    if user_friend_relation.is_err() {
+        return Err(Error::ErrorWhileSendingRequest)
+    }
 
-
+    if user_friend_relation.unwrap().is_some() {
+        return Err(Error::FriendRequestAlreadySent)
+    }
     let new_request_id = Uuid::new_v4();
     let new_friend_request_relation = users_friends_requests::ActiveModel {
         id: Set(new_request_id),
         user_recieved_id: Set(user_found.id),
         user_sent_id: Set(Uuid::from_str(&payload.user_id).unwrap()),
-        user_sent_username: Set(payload.friend_username.clone()),
+        user_sent_username: Set(payload.user_username.clone()),
     };
 
     let kafka_event = UserFriendRequestKafkaEvent {
@@ -290,8 +296,7 @@ pub async fn get_user_online_friends(
             let user_type_details = friend_result.unwrap().try_into_model().unwrap();
 
             let mut redisConnection  = arc_redis_client.lock().unwrap();
-            let does_friend_key_exist_in_redis: RedisResult<String> = redisConnection.hkeys(user_type_details.id.to_string().clone());
-
+            let does_friend_key_exist_in_redis: RedisResult<String> = redisConnection.get(user_type_details.id.to_string().clone());
             if does_friend_key_exist_in_redis.is_err() || does_friend_key_exist_in_redis.unwrap() != "online" {
                continue;
             }
@@ -303,11 +308,6 @@ pub async fn get_user_online_friends(
                     is_user_online: true,
                 };
          
-
-            
-
-           
-
             results_resp.push(online_friend_response);
      
         
