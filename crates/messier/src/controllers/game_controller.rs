@@ -382,6 +382,33 @@ if user_model.is_err() {
 }
 
 
+pub async fn verify_game_status(
+    state: State<AppDBState>,
+    payload: Json<VerifyGameStatusPayload>
+) -> APIResult<Json<Value>> {
+        if &payload.game_id == "" || &payload.host_user_id == "" || &payload.game_name == "" {
+            return Err(Error::MissingParamsError)
+        }
+   
+
+        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+        let game_collection = mongo_db.collection::<Game>("games");
+        let game_model = game_collection.find_one(doc! { "host_id": payload.host_user_id.clone(), "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap(), "name": payload.game_name.clone()},None).await;
+       
+if game_model.is_err() {
+    return Err(Error::GameNotFound)
+}
+
+        let body = Json(json!({
+            "result": {
+                "success": true
+            }
+        }));
+    
+        Ok(body)
+}
+
+
 
 pub async fn start_game(
     state: State<AppDBState>,

@@ -26,6 +26,7 @@ pub enum Error {
 	LoginFail,
 	RegistrationFail,
 	MissingParamsError,
+	GameNotFound,
 	FailedToSetRedisKeyWithOptions,
 	ErrorWhileRetrievingPlayersStatus,
 	ErrorWhileUpdatingPlayerStatus,
@@ -142,7 +143,7 @@ impl Error {
 			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
 
 			Self::ErrorWhileRetrievingPlayersStatus => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_RETRIEVING_PLAYERS_STATUS),
-
+			Self::GameNotFound => (StatusCode::BAD_REQUEST, ClientError::GAME_NOT_FOUND),
 			Self::ErrorWhileSendingLeaveKafkaEvent => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_SENDING_KAFKA_EVENT),
 
 			Self::ErrorWhileFetchingUserFriends => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_FRIENDS),
@@ -241,6 +242,7 @@ pub enum ClientError {
 	ERROR_WHILE_UPDATING_MONGO_USER_AND_GAME,
 	ERROR_WHILE_FETCHING_FRIENDS_REQUESTS,
 	ERROR_WHILE_UPDATING_PLAYER_STATUS,
+	GAME_NOT_FOUND,
 	ENTITY_NOT_FOUND,
 	ERROR_WHILE_LEAVING_LOBBY,
 	PASSWORD_INCORRECT,

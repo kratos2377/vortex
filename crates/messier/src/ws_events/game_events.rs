@@ -93,11 +93,11 @@ pub fn create_ws_game_events(socket: SocketRef) {
     });
 
 
-   socket.on_disconnect(|socket: SocketRef| async move {
+   socket.on_disconnect(|socket: SocketRef, State(WebSocketStates { producer, context } )| async move {
     //Add Events to publish disconnected events
     // Maybe i will add a redis layer for this
     //   info!("Socket.IO disconnected: {} {}", socket.id, "reason");
-
+    let user_id = 
        socket.disconnect().ok();
 });
 
@@ -114,3 +114,18 @@ pub async fn add_key_in_redis(redis_client: Arc<Mutex<Connection>> , key: String
         println!("{:?}", res);
     }
 }
+
+pub async fn get_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: String) -> String {
+    let mut redis_conn = redis_client.lock().unwrap();
+    let res: RedisResult<String> = redis_conn.get(key);
+
+    if res.is_err() {
+        return "error".to_string()
+    }
+
+  res.unwrap()
+}
+
+// pub async fn remove_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: String) {
+//     let mut redis_conn
+// }

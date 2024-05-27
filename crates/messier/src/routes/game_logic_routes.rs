@@ -14,6 +14,7 @@ pub fn create_game_routes() -> Router<AppDBState> {
         .route("/get_ongoing_games_for_user", get(controllers::game_controller::get_ongoing_games_for_user))
         .route("/get_current_state_of_game", get(controllers::game_controller::get_current_state_of_game))
         .route("/update_player_status", post(controllers::game_controller::update_player_status))
+        .route("/verify_game_status", post(controllers::game_controller::verify_game_status)) 
         .route("/start_game", post(controllers::game_controller::start_game))
         .route("/stake_in_game", post(controllers::game_controller::stake_in_game))
         .route_layer(middleware::from_fn(utils::middleware::guard))
