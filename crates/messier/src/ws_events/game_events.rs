@@ -1,5 +1,5 @@
 use futures::future;
-use orion::{constants::{USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_READY_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
+use orion::{constants::{REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_READY_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, Connection, RedisResult};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
@@ -92,7 +92,20 @@ pub fn create_ws_game_events(socket: SocketRef) {
    socket.on_disconnect(|socket: SocketRef, State(WebSocketStates { producer, context } )| async move {
     
     let user_id = get_key_from_redis(context.get_redis_db_client(), socket.id.to_string()).await;
+    let game_id = get_key_from_redis(context.get_redis_db_client(), user_id.clone() + REDIS_USER_GAME_KEY).await;
+    let user_type = get_key_from_redis(context.get_redis_db_client(), user_id.clone() + REDIS_USER_PLAYER_KEY).await;
+    
+    if user_type == "host" {
+        let _ = socket.broadcast().to(game_id).emit("remove-all-users", "no-data");
+    }
+
+    // Remove Keys from redis
     remove_key_from_redis(context.get_redis_db_client() , user_id.clone()).await;
+    remove_key_from_redis(context.get_redis_db_client() , user_id.clone() + REDIS_USER_GAME_KEY).await;
+    remove_key_from_redis(context.get_redis_db_client() , user_id.clone() + REDIS_USER_PLAYER_KEY).await;
+    remove_key_from_redis(context.get_redis_db_client() , socket.id.to_string().clone()).await;
+
+    // Send Kafka Event
     let _ = produce_user_game_deletion_kafka_event(producer , user_id.clone()).await;
     // Send USER_OFFLINE_EVENT and user leave event to room if it exists and make necessary MQTT events
        socket.disconnect().ok();

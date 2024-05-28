@@ -5,7 +5,7 @@ use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
 use bson::{doc, Document};
 use futures::{StreamExt, TryStreamExt};
-use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
+use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
 use std::sync::{Arc, Mutex};
@@ -60,7 +60,8 @@ pub async fn create_lobby(
         staked_money_state: None,
         poker_state: None,
     };
-
+    let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, game_id.to_string());
+    let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "host".to_string());
    let user_mongo_result =  user_collection.insert_one(user_doc, None).await;
    let game_mongo_result =  game_collection.insert_one(game_doc, None).await;
 
@@ -93,6 +94,7 @@ pub async fn join_lobby(
     let arc_redis_client = &state.context.get_redis_db_client();
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");   
     let _: RedisResult<()> =  set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, payload.game_id.clone());
+    let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "player".to_string());
     let mut get_game_result = get_key_from_redis(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
     if get_game_result.is_err() {
         return Err(Error::JoinLobbyError)
@@ -418,8 +420,7 @@ pub async fn remove_game_models(
         }
    
         let  redis_conn = state.context.get_redis_db_client();
-        let mut redis_conn = redis_conn.lock().unwrap();
-        let _: RedisResult<()> = redis_conn.del(payload.user_id.clone() + REDIS_USER_GAME_KEY);
+        let _: RedisResult<()> = delete_key_from_redis(&redis_conn, payload.user_id.clone() + REDIS_USER_GAME_KEY);
 
         let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
         let user_collection = mongo_db.collection::<UserGameRelation>("users");
@@ -499,4 +500,10 @@ pub fn get_key_from_redis(redis_client: Arc<Mutex<Connection>>, key: String) -> 
 pub fn set_key_from_redis(redis_client: &Arc<Mutex<Connection>>, key: String , value: String) -> RedisResult<()> {
     let mut rd_conn = redis_client.lock().unwrap();
     rd_conn.set(key , value)
+}
+
+
+pub fn delete_key_from_redis(redis_client: &Arc<Mutex<Connection>>, key: String) -> RedisResult<()> {
+    let mut rd_conn = redis_client.lock().unwrap();
+    rd_conn.del(key)
 }
