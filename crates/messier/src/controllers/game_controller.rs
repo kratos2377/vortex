@@ -5,7 +5,7 @@ use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
 use bson::{doc, Document};
 use futures::{StreamExt, TryStreamExt};
-use orion::{constants::GAME_INVITE_EVENT, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
+use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
 use std::sync::{Arc, Mutex};
@@ -15,7 +15,7 @@ use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, SendGameEventAPIPayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -91,7 +91,8 @@ pub async fn join_lobby(
     } 
 
     let arc_redis_client = &state.context.get_redis_db_client();
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");   
+    let _: RedisResult<()> =  set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, payload.game_id.clone());
     let mut get_game_result = get_key_from_redis(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
     if get_game_result.is_err() {
         return Err(Error::JoinLobbyError)
@@ -408,6 +409,41 @@ if game_model.is_err() {
         Ok(body)
 }
 
+pub async fn remove_game_models(
+    state: State<AppDBState>,
+    payload: Json<RemoveGameModelsPayload>
+) -> APIResult<Json<Value>> {
+        if &payload.game_id == "" || &payload.host_user_id == "" || &payload.game_name == "" || payload.user_id == "" {
+            return Err(Error::MissingParamsError)
+        }
+   
+        let  redis_conn = state.context.get_redis_db_client();
+        let mut redis_conn = redis_conn.lock().unwrap();
+        let _: RedisResult<()> = redis_conn.del(payload.user_id.clone() + REDIS_USER_GAME_KEY);
+
+        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+        let user_collection = mongo_db.collection::<UserGameRelation>("users");
+        let game_collection = mongo_db.collection::<Game>("games");
+        let user_model = user_collection.find_one(doc! { "user_id": BsonUuid::parse_str(payload.user_id.clone()).unwrap() }, None).await.unwrap().unwrap();
+       
+       if user_model.player_type == "host" {
+        let _ = game_collection.delete_one(doc! { "host_id": payload.host_user_id.clone(), "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap(), "name": payload.game_name.clone()},None).await;
+       }
+       
+       let user_rsp = user_collection.delete_one(doc! { "user_id": BsonUuid::parse_str(payload.user_id.clone()).unwrap(), "game_id": payload.game_id.clone()}, None).await;
+       
+if user_rsp.is_err() {
+    return Err(Error::GameNotFound)
+}
+
+        let body = Json(json!({
+            "result": {
+                "success": true
+            }
+        }));
+    
+        Ok(body)
+}
 
 
 pub async fn start_game(

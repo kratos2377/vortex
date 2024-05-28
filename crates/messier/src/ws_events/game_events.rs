@@ -1,13 +1,9 @@
-
-use futures::FutureExt;
-use futures_util::future;
-use orion::{constants::{USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_READY_EVENT, VERIFYING_GAME_STATUS}, events::ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}};
+use futures::future;
+use orion::{constants::{USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_READY_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, Connection, RedisResult};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
-use tracing::info;
-use uuid::Uuid;
-use std::{sync::{Arc, Mutex}};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use crate::{ event_producer::{game_events_producer::{send_game_move_events, GameEventPayload, UserReadyEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, mongo::{kafka_event_models::{UserGameEvent, UserGameMove}, send_kafka_events_to_mongo::create_and_send_kafka_events, transaction::transactional}, state::WebSocketStates};
 
@@ -94,10 +90,11 @@ pub fn create_ws_game_events(socket: SocketRef) {
 
 
    socket.on_disconnect(|socket: SocketRef, State(WebSocketStates { producer, context } )| async move {
-    //Add Events to publish disconnected events
-    // Maybe i will add a redis layer for this
-    //   info!("Socket.IO disconnected: {} {}", socket.id, "reason");
-    let user_id = 
+    
+    let user_id = get_key_from_redis(context.get_redis_db_client(), socket.id.to_string()).await;
+    remove_key_from_redis(context.get_redis_db_client() , user_id.clone()).await;
+    let _ = produce_user_game_deletion_kafka_event(producer , user_id.clone()).await;
+    // Send USER_OFFLINE_EVENT and user leave event to room if it exists and make necessary MQTT events
        socket.disconnect().ok();
 });
 
@@ -126,6 +123,49 @@ pub async fn get_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: Stri
   res.unwrap()
 }
 
-// pub async fn remove_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: String) {
-//     let mut redis_conn
-// }
+pub async fn remove_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: String) {
+    let mut redis_conn = redis_client.lock().unwrap();
+    let _: RedisResult<()> = redis_conn.del(key);
+}
+
+// The User-Game-Deletion event will delete events from mongo db
+pub async fn produce_user_game_deletion_kafka_event(producer: &FutureProducer, user_id: String) -> Result<(), KafkaError> {
+    let deletion_event = UserGameDeletetionEvent{ user_id: user_id };
+    let kafka_events = vec![ 
+        KafkaGeneralEvent {
+            topic: "user_game_deletion".to_string(),
+            payload: serde_json::to_string(&deletion_event).unwrap(),
+            key: "user-game-deletion-event".to_string(),
+        }
+    ];
+    producer.begin_transaction().unwrap();
+
+    let kafka_result = future::try_join_all(kafka_events.iter().map(|event| async move {
+
+        let delivery_result = producer
+        .send(
+            FutureRecord::to(&event.topic)
+                    .payload(&event.payload)
+                    .key(&event.key),
+            Duration::from_secs(20),
+        )
+        .await;
+
+    // This will be executed when the result is received.
+  //  println!("Delivery status for message {} received", i);
+    delivery_result
+
+    })
+
+    ).await;
+
+    match kafka_result {
+        Ok(_) => (),
+        Err(e) => return Err(e.0.into()),
+    }
+
+    producer.commit_transaction(Timeout::from(Duration::from_secs(10))).unwrap(); 
+
+    Ok(())
+
+}

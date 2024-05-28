@@ -58,10 +58,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
         connection.clone()
     );
 
-   // io.ns("/", ws_events::user_events::create_ws_user_events);
-
-    
-  //  Migrator::up(&conn, None).await.unwrap();
   
   let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
   let kafka_prod_clone = kafka_producer.clone();

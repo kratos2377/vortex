@@ -1,0 +1,32 @@
+mongo_db:
+  url: mongodb://admin:adminpassword@localhost/user_game_events_db?authSource=admin
+  connection: 
+    pool:
+      min: 1
+      max: 100
+    # optional params
+    # connect_timeout:
+    # idle_timeout: 
+
+server:
+  port: 3006
+
+kafka:
+  broker:
+    urls: localhost:9092
+  consumer:
+    - id: user_game_deletion
+      topic:
+        - user_game_deletion
+      client_id: client.id
+      group_id: group.id
+  producer:
+    client_id:  helix
+    transactional_id: helix-transactions
+  schema_registry:
+    url: http://localhost:8081
+  topic:
+    mappings:
+      - id: user_game_deletion
+        topic_name: user_game_deletion
+        partitions: 2

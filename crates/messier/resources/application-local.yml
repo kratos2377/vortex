@@ -47,6 +47,9 @@ kafka:
       - id: user_game_events
         topic_name: user_game_events
         partitions: 2
+      - id: user_game_deletion
+        topic_name: user_game_deletion
+        partitions: 2
 
 mqtt:
   dflt_broker: "tcp://127.0.0.1:1883"

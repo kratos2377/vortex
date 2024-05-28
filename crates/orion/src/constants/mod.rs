@@ -9,3 +9,7 @@ pub const USER_LEFT_ROOM: &str = "user-left-room";
 pub const USER_READY_EVENT: &str = "user-ready-event";
 pub const VERIFYING_GAME_STATUS: &str = "verifying-game-status";
 pub const ERROR_EVENT: &str = "error-event";
+
+//Redis Key
+pub const REDIS_USER_GAME_KEY: &str = "-user-game-id";
+pub const REDIS_USER_PLAYER_KEY: &str = "-user-player-type";
