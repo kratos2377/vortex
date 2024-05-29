@@ -13,6 +13,7 @@ pub struct LeavedRoomPayload {
     pub user_id: String,
     pub username: String,
     pub game_id: String,
+    pub player_type: String,
 }
 
 

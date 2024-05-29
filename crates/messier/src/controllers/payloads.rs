@@ -6,6 +6,7 @@ use uuid::Uuid;
 #[derive(Clone, Debug, Deserialize)]
 pub struct CreateLobbyPayload {
     pub user_id: String,
+    pub username: String,
     pub game_type: String,
     pub game_name: String,
 }
@@ -14,6 +15,7 @@ pub struct CreateLobbyPayload {
 #[derive(Clone, Debug, Deserialize)]
 pub struct JoinLobbyPayload {
     pub user_id: String,
+    pub username: String,
     pub game_id: String,
     pub game_name: String,
 }
@@ -69,6 +71,13 @@ pub struct SendGameEventAPIPayload {
 pub struct DestroyLobbyPayload {
     pub game_id: String,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct GetLobbyPlayersPayload {
+    pub game_id: String,
+    pub host_user_id: String,
+}
+
 
 
 #[derive(Clone, Debug, Deserialize)]

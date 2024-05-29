@@ -15,7 +15,7 @@ use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetLobbyPlayersPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -23,7 +23,7 @@ pub async fn create_lobby(
 	payload: Json<CreateLobbyPayload>,
 ) -> APIResult<Json<Value>> {
 
-    if payload.user_id == "" || payload.game_name == "" || payload.game_type == "" {
+    if payload.user_id == "" || payload.game_name == "" || payload.game_type == ""  || payload.username == "" {
         return  Err(Error::MissingParamsError);
     }
 
@@ -42,6 +42,7 @@ pub async fn create_lobby(
 
     let user_doc = UserGameRelation {
         user_id: Uuid::from_str(&payload.user_id).unwrap(),
+        username: payload.username.clone(),
         game_id: Some(game_id.to_string().clone()),
         player_type: "host".to_string(),
         player_status: "not-ready".to_string(),
@@ -87,7 +88,7 @@ pub async fn join_lobby(
 	payload: Json<JoinLobbyPayload>,
 ) -> APIResult<Json<Value>> {
 
-    if payload.user_id == "" || payload.game_id == "" || payload.game_name == "" {
+    if payload.user_id == "" || payload.game_id == "" || payload.game_name == "" || payload.username == "" {
         return Err(Error::MissingParamsError)
     } 
 
@@ -129,6 +130,7 @@ pub async fn join_lobby(
 
    let user_doc = UserGameRelation {
     user_id: Uuid::from_str(&payload.user_id).unwrap(),
+    username: payload.username.clone(),
     game_id: Some(payload.game_id.clone()),
     player_type: "player".to_string(),
     player_status: "not-ready".to_string(),
@@ -245,6 +247,34 @@ pub async fn destroy_lobby_and_game(
 		"result": {
 			"success": true
 		}
+	}));
+
+	Ok(body)
+}
+
+pub async fn get_lobby_players(
+    state: State<AppDBState>,
+	payload: Json<GetLobbyPlayersPayload>,
+) -> APIResult<Json<Value>> {
+
+    if payload.game_id == "" || payload.host_user_id == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let user_collection = mongo_db.collection::<UserGameRelation>("users");
+    let user_models_resp = user_collection.find(doc! { "game_id": payload.game_id.clone()}, None).await;
+
+    if user_models_resp.is_err() {
+        return Err(Error::ErrorWhileRetrievingLobbyUsers)
+    }
+
+    let user_models: Vec<UserGameRelation> = user_models_resp.unwrap().try_collect().await.unwrap();
+    let body = Json(json!({
+		"result": {
+			"success": true
+		},
+        "lobby_users": user_models
 	}));
 
 	Ok(body)

@@ -11,6 +11,7 @@ pub fn create_game_routes() -> Router<AppDBState> {
         .route("/join_lobby", post(controllers::game_controller::join_lobby))
         .route("/leave_lobby", post(controllers::game_controller::leave_lobby))
         .route("/destroy_lobby_and_game", post(controllers::game_controller::destroy_lobby_and_game))
+        .route("/get_lobby_players", post(controllers::game_controller::get_lobby_players))
         .route("/get_ongoing_games_for_user", get(controllers::game_controller::get_ongoing_games_for_user))
         .route("/get_current_state_of_game", get(controllers::game_controller::get_current_state_of_game))
         .route("/update_player_status", post(controllers::game_controller::update_player_status))
