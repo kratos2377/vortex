@@ -16,6 +16,13 @@ pub struct LeavedRoomPayload {
     pub player_type: String,
 }
 
+#[derive(Deserialize , Serialize)]
+pub struct UpdateUserStatusPayload {
+    pub user_id: String,
+    pub username: String,
+    pub game_id: String,
+    pub status: String,
+}
 
 #[derive(Deserialize , Serialize)]
 pub struct GameStartPayload {

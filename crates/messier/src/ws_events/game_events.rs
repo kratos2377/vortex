@@ -1,5 +1,5 @@
 use futures::future;
-use orion::{constants::{REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_READY_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
+use orion::{constants::{REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_READY_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, Connection, RedisResult};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
@@ -45,6 +45,19 @@ pub fn create_ws_game_events(socket: SocketRef) {
         async move {
             send_event_for_user_topic(&producer, &context, USER_LEFT_ROOM.to_string() ,msg).await.unwrap();
          }
+    });
+
+    socket.on("update-user-status-in-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| {
+        let data: UpdateUserStatusPayload = serde_json::from_str(&msg).unwrap();
+
+ 
+            let _ = socket.broadcast().to(data.game_id).emit("user-status-update" , msg.clone());
+      
+     
+        // Add general kafka event for this
+        // async move {
+        //     send_event_for_user_topic(&producer, &context, USER_LEFT_ROOM.to_string() ,msg).await.unwrap();
+        //  }
     });
 
 
