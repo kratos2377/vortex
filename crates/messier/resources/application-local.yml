@@ -24,13 +24,13 @@ kafka:
     - id: user
       topic:
         - user
-      client_id: client.id
-      group_id: group.id
+      client_id: user.client.id
+      group_id: user.group.id
     - id: game
       topic:
         - game
-      client_id: client.id
-      group_id: group.id
+      client_id: game.client.id
+      group_id: game.group.id
   producer:
     client_id:  messier
     transactional_id: messier-transactions

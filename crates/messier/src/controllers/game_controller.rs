@@ -199,6 +199,10 @@ pub async fn leave_lobby(
         return Err(Error::MissingParamsError)
     }
 
+    let arc_redis_client = state.context.get_redis_db_client();
+    let _: RedisResult<()> =  delete_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY);
+    let _: RedisResult<()> = delete_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY);
+
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
     
 
@@ -235,11 +239,18 @@ pub async fn destroy_lobby_and_game(
     state: State<AppDBState>,
 	payload: Json<DestroyLobbyPayload>,
 ) -> APIResult<Json<Value>> {
-    let arc_redis_client = state.context.get_redis_db_client();
-    let mut redisConnection  = arc_redis_client.lock().unwrap();
+    if payload.game_id == "" {
+        return Err(Error::MissingParamsError)
+    }
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let user_collection = mongo_db.collection::<UserGameRelation>("users");
+    let game_collection = mongo_db.collection::<Game>("games");
 
-    let delete_query_result: RedisResult<()> = redisConnection.del(&payload.game_id);
-    if delete_query_result.is_err() {
+
+
+    let game_Delete_query = game_collection.delete_one(doc! { "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap()}, None).await;
+    let user_delete_query = user_collection.delete_many(doc! { "game_id": payload.game_id.clone()}, None).await;
+    if game_Delete_query.is_err() || user_delete_query.is_err() {
         return Err(Error::DeleteLobbyError)
     }
 

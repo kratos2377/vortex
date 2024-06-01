@@ -76,7 +76,7 @@ pub async fn send_event_for_user_topic(
         Err(e) => return Err(e.0.into()),
     }
 
-    producer.commit_transaction(Timeout::from(Duration::from_secs(10))).unwrap(); 
+    producer.commit_transaction(Timeout::from(Duration::from_secs(5))).unwrap(); 
 
     Ok(())
 

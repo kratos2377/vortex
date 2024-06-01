@@ -18,8 +18,8 @@ kafka:
     - id: user_game_deletion
       topic:
         - user_game_deletion
-      client_id: client.id
-      group_id: group.id
+      client_id: user.game.deletion.client.id
+      group_id: user.game.deletion.group.id
   producer:
     client_id:  helix
     transactional_id: helix-transactions
