@@ -16,7 +16,7 @@ pub fn create_mqtt_client_for_kafka_consumer(config: &MQTTConfiguration , topic:
 
 
     let lwt = mqtt::MessageBuilder::new()
-    .topic("test")
+    .topic("connection_test")
     .payload("Consumer lost connection")
     .finalize();
 let conn_opts = mqtt::ConnectOptionsBuilder::new()
@@ -31,23 +31,23 @@ if let Err(e) = cli.connect(conn_opts) {
 
 }
 
-subscribe_topics(&cli , topic.clone(), &config);
+//subscribe_topics(&cli , topic.clone(), &config);
 
 cli
 }
 
 
 
-fn subscribe_topics(cli: &mqtt::Client , topic_name: String, config: &MQTTConfiguration) {
-    if topic_name == "user" {
-        if let Err(e) = cli.subscribe_many(&config.dflt_topic_user, &config.dflt_qos_user) {
-            println!("Error user subscribes topics: {:?}", e);
+// fn subscribe_topics(cli: &mqtt::Client , topic_name: String, config: &MQTTConfiguration) {
+//     if topic_name == "user" {
+//         if let Err(e) = cli.subscribe_many(&config.dflt_topic_user, &config.dflt_qos_user) {
+//             println!("Error user subscribes topics: {:?}", e);
        
-        }
-    } else {
-        if let Err(e) = cli.subscribe_many( &config.dflt_topic_game, &config.dflt_qos_game) {
-            println!("Error game subscribes topics: {:?}", e);
+//         }
+//     } else {
+//         if let Err(e) = cli.subscribe_many( &config.dflt_topic_game, &config.dflt_qos_game) {
+//             println!("Error game subscribes topics: {:?}", e);
        
-        }
-    }
-}
+//         }
+//     }
+// }

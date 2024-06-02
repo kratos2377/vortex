@@ -59,11 +59,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     );
 
   
-  let kafka_producer = kafka::init_producer::create_new_kafka_producer().unwrap();
-  let kafka_prod_clone = kafka_producer.clone();
+  let kafka_producer = kafka::init_producer::create_new_kafka_producer(&config.kafka).unwrap();
+  let socket_kafka_producer = kafka::init_producer::create_new_kafka_producer(&config.kafka).unwrap();
   let context_clone = context.clone();
   let state = AppDBState {conn: connection , from_email: config.email_config.from_email , smtp_key: config.email_config.smtp_key, context: context, producer: kafka_producer };
-    let websocket_states = WebSocketStates { producer: kafka_prod_clone , context: context_clone };
+    let websocket_states = WebSocketStates { producer: socket_kafka_producer , context: context_clone };
     let (layer, io) = SocketIo::builder().with_state(websocket_states).build_layer();
 
     io.ns("/",   ws_events::game_events::create_ws_game_events);

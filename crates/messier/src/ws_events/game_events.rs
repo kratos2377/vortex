@@ -23,7 +23,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
     
     socket.on("joined-room", |socket: SocketRef , Data::<String>(msg), State(WebSocketStates { producer, context } ) | {
         let data: JoinedRoomPayload = serde_json::from_str(&msg).unwrap();
-
+        let _ = socket.join(data.game_id.clone());
       let _ =   socket.broadcast().to(data.game_id).emit("new-user-joined" , msg.clone());
 
       async move  {
@@ -34,7 +34,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
 
     socket.on("leaved-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| {
         let data: LeavedRoomPayload = serde_json::from_str(&msg).unwrap();
-
+        let _ = socket.leave(data.game_id.clone());
         if data.player_type == "host" {
             let _ = socket.broadcast().to(data.game_id.clone()).emit("remove-all-users", msg.clone());
         } else {
@@ -105,7 +105,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
     let user_type = get_key_from_redis(context.get_redis_db_client(), user_id.clone() + REDIS_USER_PLAYER_KEY).await;
     
     if user_type == "host" {
-        let _ = socket.broadcast().to(game_id).emit("remove-all-users", "no-data");
+        let _ = socket.broadcast().to(game_id.clone()).emit("remove-all-users", "no-data");
     }
 
     // Remove Keys from redis
@@ -114,8 +114,14 @@ pub fn create_ws_game_events(socket: SocketRef) {
     remove_key_from_redis(context.get_redis_db_client() , user_id.clone() + REDIS_USER_PLAYER_KEY).await;
     remove_key_from_redis(context.get_redis_db_client() , socket.id.to_string().clone()).await;
 
+    if game_id != "nil" && game_id != "" {
+    // leave socket rooms
+    let _ = socket.leave(game_id.clone());
+
     // Send Kafka Event
     let _ = produce_user_game_deletion_kafka_event(producer , user_id.clone()).await;
+    } 
+
     // Send USER_OFFLINE_EVENT and user leave event to room if it exists and make necessary MQTT events
        socket.disconnect().ok();
 });
@@ -139,7 +145,7 @@ pub async fn get_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: Stri
     let res: RedisResult<String> = redis_conn.get(key);
 
     if res.is_err() {
-        return "error".to_string()
+        return "nil".to_string()
     }
 
   res.unwrap()

@@ -2303,6 +2303,7 @@ dependencies = [
  "migration",
  "mongodb",
  "murmur3",
+ "nano-id",
  "opentelemetry",
  "orion",
  "rand",
@@ -2424,6 +2425,15 @@ name = "murmur3"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9252111cf132ba0929b6f8e030cac2a24b507f3a4d6db6fb2896f27b354c714b"
+
+[[package]]
+name = "nano-id"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e9dfd208c32f1769f32839ad268ed13edda7646c1591769641e5fe089febd54"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "native-tls"

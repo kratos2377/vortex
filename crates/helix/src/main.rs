@@ -166,10 +166,7 @@ pub async fn do_listen(
                 let _ = user_collection.delete_one(doc! { "user_id": BsonUuid::parse_str(user_game_deletion_event.user_id.clone()).unwrap()}, None).await;
                 let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
              
-
-
             }
-
                 
             }
         }

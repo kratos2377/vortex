@@ -48,18 +48,17 @@ pub async fn send_event_for_user_topic(
         return Ok(())
     }
 
-
-    producer.begin_transaction().unwrap();
+    
+   producer.begin_transaction().unwrap();
 
 
     let kafka_result = future::try_join_all(kafka_events.iter().map(|event| async move {
-
         let delivery_result = producer
         .send(
             FutureRecord::to(&event.topic)
                     .payload(&event.payload)
-                    .key(&event.key),
-            Duration::from_secs(20),
+                    .key(&event.key.clone()),
+            Duration::from_secs(3),
         )
         .await;
 

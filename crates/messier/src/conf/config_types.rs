@@ -41,8 +41,17 @@ pub struct TopicProperties {
 pub struct KafkaConfiguration {
     pub broker: BrokerProperties,
     pub schema_registry: SchemaRegistryProperties,
+    pub producer: ProducerProperties,
     pub topic: TopicConfiguration,
 }
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+pub struct ProducerProperties {
+    pub client_id: String,
+    pub transactional_id: String,
+}
+
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]

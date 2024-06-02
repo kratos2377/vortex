@@ -118,7 +118,12 @@ pub async fn join_lobby(
    }
 
    let game_model: Vec<Game> = game_res.unwrap().try_collect().await.unwrap();
-   let game = game_model.get(0).unwrap();
+   let game_res = game_model.get(0);
+
+   if game_res.is_none() {
+    return Err(Error::GameLobbyDeletedOrRequestIsInvalid)
+   }
+   let game = game_res.unwrap();
 
    if payload.game_name == "chess" && game.user_count >= 2 {
     return Err(Error::LobbyIsFull)
@@ -404,7 +409,7 @@ pub async fn update_player_status(
             return Err(Error::MissingParamsError)
         }
         let status_up = &payload.status.to_ascii_lowercase();
-        if  status_up != "ready" || status_up != "not-ready" {
+        if  status_up != "ready" && status_up != "not-ready" {
             return Err(Error::InvalidStatusSendAsPayload)
         }
 
@@ -535,7 +540,7 @@ pub async fn stake_in_game(
 
 pub fn get_key_from_redis(redis_client: Arc<Mutex<Connection>>, key: String) -> RedisResult<String> {
     let mut rd_conn = redis_client.lock().unwrap();
-    rd_conn.hkeys(key)
+    rd_conn.get(key)
 }
 
 pub fn set_key_from_redis(redis_client: &Arc<Mutex<Connection>>, key: String , value: String) -> RedisResult<()> {
