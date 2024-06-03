@@ -47,6 +47,13 @@ pub struct VerifyGameStatusPayload {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct StartGamePayload {
+    pub game_id: String,
+    pub game_name: String,
+}
+
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct RemoveGameModelsPayload {
     pub game_id: String,
     pub host_user_id: String,

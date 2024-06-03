@@ -34,13 +34,13 @@ pub fn create_ws_game_events(socket: SocketRef) {
 
     socket.on("leaved-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| {
         let data: LeavedRoomPayload = serde_json::from_str(&msg).unwrap();
-        let _ = socket.leave(data.game_id.clone());
         if data.player_type == "host" {
             let _ = socket.broadcast().to(data.game_id.clone()).emit("remove-all-users", msg.clone());
         } else {
-            let _ = socket.broadcast().to(data.game_id).emit("user-left-room" , msg.clone());
+            let _ = socket.broadcast().to(data.game_id.clone()).emit("user-left-room" , msg.clone());
         }
-     
+        
+        let _ = socket.leave(data.game_id);
 
         async move {
             send_event_for_user_topic(&producer, &context, USER_LEFT_ROOM.to_string() ,msg).await.unwrap();

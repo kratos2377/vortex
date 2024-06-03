@@ -15,7 +15,7 @@ use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetLobbyPlayersPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetLobbyPlayersPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, StartGamePayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -495,7 +495,7 @@ if user_rsp.is_err() {
 
 pub async fn start_game(
     state: State<AppDBState>,
-    payload: Json<VerifyGameStatusPayload>
+    payload: Json<StartGamePayload>
 ) -> APIResult<Json<Value>> {
         if &payload.game_id == "" || &payload.game_name == "" {
             return Err(Error::MissingParamsError)
