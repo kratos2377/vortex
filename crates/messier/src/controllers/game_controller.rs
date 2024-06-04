@@ -5,6 +5,7 @@ use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
 use bson::{doc, Document};
 use futures::{StreamExt, TryStreamExt};
+use mongodb::options::FindOptions;
 use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
@@ -560,7 +561,16 @@ pub async fn get_user_turn_mappings(
 
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
     let user_turns_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
-    let user_turn_model = user_turns_collection.find(doc! { "game_id": payload.game_id.clone() }, None).await;
+
+
+    let sort = doc! {
+        "turn_mappings.count_id": 1 // 1 for ascending, -1 for descending
+    };
+    let options = FindOptions::builder()
+        .sort(sort)
+        .build();
+
+    let user_turn_model = user_turns_collection.find(doc! { "game_id": payload.game_id.clone() }, options).await;
 
     if user_turn_model.is_err() {
         return Err(Error::ErrorWhileFetchingUserTurns)
