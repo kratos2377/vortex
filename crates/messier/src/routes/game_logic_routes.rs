@@ -18,6 +18,7 @@ pub fn create_game_routes() -> Router<AppDBState> {
         .route("/verify_game_status", post(controllers::game_controller::verify_game_status)) 
         .route("/remove_game_models", post(controllers::game_controller::remove_game_models)) 
         .route("/start_game", post(controllers::game_controller::start_game))
+        .route("/get_user_turn_mappings", post(controllers::game_controller::get_user_turn_mappings))
         .route("/stake_in_game", post(controllers::game_controller::stake_in_game))
         .route_layer(middleware::from_fn(utils::middleware::guard))
 }

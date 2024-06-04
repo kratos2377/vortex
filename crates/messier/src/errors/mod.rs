@@ -43,6 +43,7 @@ pub enum Error {
 	ErrorWhileSendingLeaveKafkaEvent,
 	NotAllPlayersHaveReadyStatus,
 	PasswordIncorrect,
+	ErrorWhileFetchingUserTurns,
 	UsernameAlreadyExists,
 	ErrorWhileFetchingUserFriends,
 	ErrorWhileLeavingLobby,
@@ -177,6 +178,8 @@ impl Error {
 
 			Self::NewPasswordLengthIsSmall => (StatusCode::BAD_REQUEST , ClientError::NEW_PASSWORD_LENGHT_IS_SMALL),
 
+			Self::ErrorWhileFetchingUserTurns => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_TURNS),
+
 			//Create Lobby Error
 			Self::CreateLobbyError => (StatusCode::BAD_REQUEST, ClientError::CREATE_LOBBY_ERROR),
 			Self::JoinLobbyError => (StatusCode::BAD_REQUEST, ClientError::JOIN_LOBBY_ERROR),
@@ -248,6 +251,7 @@ pub enum ClientError {
 	ERROR_WHILE_RETRIEVING_LOBBY_USERS,
 	GAME_NOT_FOUND,
 	ENTITY_NOT_FOUND,
+	ERROR_WHILE_FETCHING_USER_TURNS,
 	ERROR_WHILE_LEAVING_LOBBY,
 	PASSWORD_INCORRECT,
 	ERROR_WHILE_SENDING_REQUEST,

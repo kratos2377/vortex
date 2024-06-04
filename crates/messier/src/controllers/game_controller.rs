@@ -5,7 +5,7 @@ use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
 use bson::{doc, Document};
 use futures::{StreamExt, TryStreamExt};
-use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
+use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
 use std::sync::{Arc, Mutex};
@@ -15,7 +15,7 @@ use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetLobbyPlayersPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, StartGamePayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetLobbyPlayersPayload, GetUserTurnMappingsPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, StartGamePayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -31,7 +31,7 @@ pub async fn create_lobby(
     let arc_redis_client = state.context.get_redis_db_client();
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
 
-    let create_result = set_key_from_redis(&arc_redis_client , game_id.to_string() + "-game-id-count" , "1".to_string() );
+    let create_result = set_key_from_redis_int(&arc_redis_client , game_id.to_string() + "-game-id-count" , 1);
 
     if create_result.is_err() {
         return Err(Error::CreateLobbyError)
@@ -39,6 +39,7 @@ pub async fn create_lobby(
 
     let user_collection = mongo_db.collection::<UserGameRelation>("users");
     let game_collection = mongo_db.collection::<Game>("games");
+    let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
 
     let user_doc = UserGameRelation {
         user_id: Uuid::from_str(&payload.user_id).unwrap(),
@@ -61,13 +62,17 @@ pub async fn create_lobby(
         staked_money_state: None,
         poker_state: None,
     };
+    let user_turn_mapping_doc = UserTurnMapping {
+        game_id: game_id.to_string().clone(),
+        turn_mappings: vec![TurnModel { count_id: 1, user_id: payload.user_id.clone(), username: payload.username.clone() }],
+    };
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, game_id.to_string());
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "host".to_string());
    let user_mongo_result =  user_collection.insert_one(user_doc, None).await;
    let game_mongo_result =  game_collection.insert_one(game_doc, None).await;
+    let user_turn_mongo_result = user_turn_collection.insert_one(user_turn_mapping_doc, None).await;
 
-
-   if user_mongo_result.is_err() || game_mongo_result.is_err() {
+   if user_mongo_result.is_err() || game_mongo_result.is_err() || user_turn_mongo_result.is_err() {
     return Err(Error::ErrorWhileCreatingEntities)
    }
 
@@ -96,21 +101,18 @@ pub async fn join_lobby(
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");   
     let _: RedisResult<()> =  set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, payload.game_id.clone());
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "player".to_string());
-    let mut get_game_result = get_key_from_redis(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
+    let mut get_game_result = get_key_from_redis_int(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
+    incr_redis_key(&arc_redis_client, payload.game_id.to_string() + "-game-id-count");
     if get_game_result.is_err() {
         return Err(Error::JoinLobbyError)
     }
 
     let cnt = get_game_result.unwrap();
-    let user_cnt_id = (i64::from_str(&cnt).unwrap()+1).to_string();
-    let rsp: RedisResult<()> = set_key_from_redis(&state.context.get_redis_db_client(), payload.game_id.to_string() + "-game-id-count", user_cnt_id.clone());
-   if rsp.is_err() {
-    return Err(Error::LobbyFull)
-   }
+    let user_cnt_id = cnt + 1;
 
    let game_collection = mongo_db.collection::<Game>("games");
    let user_collection = mongo_db.collection::<UserGameRelation>("users");
-
+   let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
    let game_res = game_collection.find(doc! { "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap() }, None).await;
 
    if game_res.is_err() {
@@ -141,10 +143,20 @@ pub async fn join_lobby(
     player_status: "not-ready".to_string(),
 };
 
+
+
+
    let user_insert_res = user_collection.insert_one(user_doc, None).await;
    let game_update_doc = game_collection.update_one(doc! { "id": payload.game_id.clone() }, doc! { "$set": doc! {"user_count": game.user_count + 1} }, None).await;
-
-    if user_insert_res.is_err() || game_update_doc.is_err() {
+   let turn_update_doc = user_turn_collection.update_one(doc! { "game_id": payload.game_id.clone()}, doc! {
+    "$push": {
+        "turn_mappings": {
+            "count_id": user_cnt_id,
+            "user_id": payload.user_id.clone(),
+            "username": payload.username.clone()
+        }
+    } }, None).await;
+    if user_insert_res.is_err() || game_update_doc.is_err() || turn_update_doc.is_err() {
         return Err(Error::ErrorWhileUpdatingMongoUserAndGame)
     }
 
@@ -213,12 +225,21 @@ pub async fn leave_lobby(
 
     let user_collection = mongo_db.collection::<UserGameRelation>("users");
     let game_collection = mongo_db.collection::<Game>("games");
+    let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
 
     let user_rsp = user_collection.delete_one(doc! { "game_id": payload.game_id.clone(), "user_id": payload.user_id.clone() }, None).await;
     
     let game_rsp = game_collection.update_one(doc! { "id": payload.game_id.clone() }, doc! { "$inc": { "user_count": -1 } }, None).await;
     
-    if user_rsp.is_err() || game_rsp.is_err() {
+    let user_turn_rsp = user_turn_collection.update_one(doc! { "game_id": payload.game_id.clone()}, doc! {
+        "$pull": {
+            "turn_mappings": {
+                "user_id": payload.user_id.clone()
+            }
+        }
+    }, None).await;
+
+    if user_rsp.is_err() || game_rsp.is_err() || user_turn_rsp.is_err() {
         return Err(Error::ErrorWhileLeavingLobby)
     }
 
@@ -250,12 +271,13 @@ pub async fn destroy_lobby_and_game(
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
     let user_collection = mongo_db.collection::<UserGameRelation>("users");
     let game_collection = mongo_db.collection::<Game>("games");
-
+    let user_turns_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
 
 
     let game_Delete_query = game_collection.delete_one(doc! { "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap()}, None).await;
     let user_delete_query = user_collection.delete_many(doc! { "game_id": payload.game_id.clone()}, None).await;
-    if game_Delete_query.is_err() || user_delete_query.is_err() {
+    let user_turn_delete_rsp = user_turns_collection.delete_one(doc! { "game_id": payload.game_id.clone()}, None).await;
+    if game_Delete_query.is_err() || user_delete_query.is_err() || user_turn_delete_rsp.is_err() {
         return Err(Error::DeleteLobbyError)
     }
 
@@ -527,7 +549,34 @@ for user in user_vec.iter() {
         Ok(body)
 }
 
+pub async fn get_user_turn_mappings(
+    state: State<AppDBState>,
+    payload: Json<GetUserTurnMappingsPayload>
+) -> APIResult<Json<Value>> {
 
+    if payload.game_id == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let user_turns_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
+    let user_turn_model = user_turns_collection.find(doc! { "game_id": payload.game_id.clone() }, None).await;
+
+    if user_turn_model.is_err() {
+        return Err(Error::ErrorWhileFetchingUserTurns)
+    } 
+
+    let res: Vec<UserTurnMapping> = user_turn_model.unwrap().try_collect().await.unwrap();
+
+    let body = Json(json!({
+        "result": {
+            "success": true
+        },
+        "user_turns": res
+    }));
+
+    Ok(body)
+}
 
 
 pub async fn stake_in_game(
@@ -543,9 +592,24 @@ pub fn get_key_from_redis(redis_client: Arc<Mutex<Connection>>, key: String) -> 
     rd_conn.get(key)
 }
 
+pub fn get_key_from_redis_int(redis_client: Arc<Mutex<Connection>>, key: String) -> RedisResult<i64> {
+    let mut rd_conn = redis_client.lock().unwrap();
+    rd_conn.get(key)
+}
+
 pub fn set_key_from_redis(redis_client: &Arc<Mutex<Connection>>, key: String , value: String) -> RedisResult<()> {
     let mut rd_conn = redis_client.lock().unwrap();
     rd_conn.set(key , value)
+}
+
+pub fn set_key_from_redis_int(redis_client: &Arc<Mutex<Connection>>, key: String , value: i64) -> RedisResult<()> {
+    let mut rd_conn = redis_client.lock().unwrap();
+    rd_conn.set(key , value)
+}
+
+pub fn incr_redis_key(redis_client: &Arc<Mutex<Connection>> , key: String) {
+    let mut rd_conn = redis_client.lock().unwrap();
+    let _: RedisResult<i64> =rd_conn.incr(key, 1);
 }
 
 

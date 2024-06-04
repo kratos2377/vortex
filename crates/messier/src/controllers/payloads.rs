@@ -227,6 +227,11 @@ pub struct GetGameCurrentStatePayload {
    pub game_id: Uuid,
 }
 
+#[derive(Clone, Debug, Deserialize , Serialize)]
+pub struct GetUserTurnMappingsPayload {
+    pub game_id: String,
+}
+
 
 #[derive( Clone, Debug, Deserialize , Serialize)]
 pub struct ChangeUserPasswordPayload {
