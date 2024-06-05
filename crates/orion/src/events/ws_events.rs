@@ -39,6 +39,17 @@ pub struct GameMessagePayload {
     pub game_id: String
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct GetUserTurnsMappingWSPayload {
+    pub game_id: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ErrorMessagePayload {
+    pub game_id: String,
+    pub error_message: String
+}
+
 #[derive(Deserialize , Serialize)]
 pub struct UserConnectionEventPayload {
     pub user_id: String,

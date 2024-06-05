@@ -1,5 +1,5 @@
 use futures::future;
-use orion::{constants::{REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{GameMessagePayload, GameStartPayload, JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
+use orion::{constants::{REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{ErrorMessagePayload, GameMessagePayload, GameStartPayload, GetUserTurnsMappingWSPayload, JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, Connection, RedisResult};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
@@ -97,6 +97,20 @@ pub fn create_ws_game_events(socket: SocketRef) {
         let _ = socket.broadcast().to(data.game_id).emit("someone-sent-a-message" , msg);
     });
 
+    // tell lobby users to fetch user-turn-mappings 
+    socket.on("get-turn-mappings" , |socket: SocketRef, Data::<String>(msg)| {
+        let data: GetUserTurnsMappingWSPayload = serde_json::from_str(&msg).unwrap();
+
+        let _ = socket.broadcast().to(data.game_id).emit("fetch-user-turn-mappings" , msg);
+    });
+
+
+    // Error Events
+    socket.on("error-event" ,|socket: SocketRef, Data::<String>(msg)| {
+        let data: ErrorMessagePayload = serde_json::from_str(&msg).unwrap();
+
+        let _ = socket.broadcast().to(data.game_id).emit("error-event-occured" , msg);
+    });
 
    socket.on_disconnect(|socket: SocketRef, State(WebSocketStates { producer, context } )| async move {
     
