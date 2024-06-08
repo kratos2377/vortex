@@ -28,6 +28,8 @@ pub struct UserGameMoveAvro {
     pub game_id: String,
     pub version: i64,
     pub user_move: String,
+    pub move_type: String,
     pub socket_id: String,
+
 }
 

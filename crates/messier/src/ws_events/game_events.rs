@@ -63,12 +63,12 @@ pub fn create_ws_game_events(socket: SocketRef) {
 
     socket.on("game-event",    |socket: SocketRef , Data::<String>(msg), State(WebSocketStates { producer, context } )| {
         let data: GameEventPayload = serde_json::from_str(&msg).unwrap();
-        let data_clone = data.clone();
+       // let data_clone = data.clone();
         let  _ =  socket.broadcast().to(data.game_id).emit("send-user-game-event" , msg);
       
-        async move {
-            send_game_move_events(&context , data_clone , socket.id.to_string()).await.unwrap();
-        }
+        // async move {
+        //     send_game_move_events(&context , data_clone , socket.id.to_string()).await.unwrap();
+        // }
 
     });
 

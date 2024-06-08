@@ -11,6 +11,7 @@ use crate::{common::schema_create_user_game_event::SCHEMA_NAME_CREATE_USER_GAME_
 pub struct GameEventPayload {
     pub user_id: String,
     pub game_event: String,
+    pub event_type: String,
     pub game_id: String
 }
 
@@ -46,6 +47,7 @@ pub async fn send_game_move_events(
              version: 1,
              user_move: game_event_payload.game_event,
              socket_id,
+            move_type: game_event_payload.event_type,
              
          }
  

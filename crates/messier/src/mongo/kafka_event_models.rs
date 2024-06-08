@@ -23,6 +23,7 @@ pub struct UserGameMove {
     pub user_id: String,
     pub game_id: String,
     pub version: i64,
+    pub move_type: String,
     pub user_move: String,
     pub socket_id: String,
 }

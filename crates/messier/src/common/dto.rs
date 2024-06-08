@@ -26,6 +26,7 @@ impl From<UserGameEvent> for CreateUserGameMoveEventAvro {
                 version: user_game_event.user_game_move.version,
                 user_move: user_game_event.user_game_move.user_move,
                 socket_id: user_game_event.user_game_move.socket_id,
+                move_type: user_game_event.user_game_move.move_type,
             },
         }
     }
