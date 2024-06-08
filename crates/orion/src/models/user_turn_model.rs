@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize , Serialize)]
 pub struct UserTurnMapping {
+    pub host_id: String,
     pub game_id: String,
     pub turn_mappings: Vec<TurnModel>,
 }

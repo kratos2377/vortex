@@ -66,6 +66,7 @@ pub async fn create_lobby(
     let user_turn_mapping_doc = UserTurnMapping {
         game_id: game_id.to_string().clone(),
         turn_mappings: vec![TurnModel { count_id: 1, user_id: payload.user_id.clone(), username: payload.username.clone() }],
+        host_id: payload.user_id.clone(),
     };
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, game_id.to_string());
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "host".to_string());
@@ -438,7 +439,7 @@ pub async fn update_player_status(
 
         let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
         let user_collection = mongo_db.collection::<UserGameRelation>("users");
-        let user_model = user_collection.update_one(doc! { "user_id": payload.user_id.clone(), "game_id": payload.game_id.clone()}, doc! { "$set": doc! {"player_status": payload.status.to_ascii_lowercase()} } ,None).await;
+        let user_model = user_collection.update_one(doc! { "user_id": BsonUuid::parse_str(payload.user_id.clone()).unwrap(), "game_id": payload.game_id.clone()}, doc! { "$set": doc! {"player_status": status_up} } ,None).await;
        
 if user_model.is_err() {
     return Err(Error::ErrorWhileUpdatingPlayerStatus)
@@ -577,12 +578,15 @@ pub async fn get_user_turn_mappings(
     } 
 
     let res: Vec<UserTurnMapping> = user_turn_model.unwrap().try_collect().await.unwrap();
+    if res.len() == 0 {
+        return Err(Error::NoMappingFound)
+    }
 
     let body = Json(json!({
         "result": {
             "success": true
         },
-        "user_turns": res
+        "user_turns": res.get(0).unwrap()
     }));
 
     Ok(body)

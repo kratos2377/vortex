@@ -33,6 +33,7 @@ pub enum Error {
 	ErrorWhileRetrievingPlayersStatus,
 	ErrorWhileUpdatingPlayerStatus,
 	ErrorWhileFetchingUserFriendsRequests,
+	NoMappingFound,
 	ErrorWhileSendingRequest,
 	InvalidUserToken,
 	EntityNotFound,
@@ -156,6 +157,7 @@ impl Error {
 			Self::InvalidStatusSendAsPayload => (StatusCode::BAD_REQUEST, ClientError::INVALID_STATUS_SEND_AS_PAYLOAD),
 
 			Self::NotAllPlayersHaveReadyStatus => (StatusCode::BAD_REQUEST, ClientError::NOT_ALL_PLAYERS_HAVE_READY_STATUS),
+			Self::NoMappingFound => (StatusCode::BAD_REQUEST, ClientError::NO_MAPPING_FOUND),
 
 			Self::ErrorWhileLeavingLobby => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_LEAVING_LOBBY),
 			
@@ -262,6 +264,7 @@ pub enum ClientError {
 	PASSWORD_LENGTH_SMALL,
 	REGISTRATION_PAYLOAD_VALIDATION_ERROR,
 	SEND_EMAIL_ERROR,
+	NO_MAPPING_FOUND,
 	CREATE_LOBBY_ERROR,
 	ERROR_WHILE_SENDING_KAFKA_EVENT,
 	JOIN_LOBBY_ERROR,

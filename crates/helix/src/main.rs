@@ -4,7 +4,7 @@ use axum::{response::IntoResponse, routing::get, Router};
 use bson::doc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
-use orion::{events::kafka_event::UserGameDeletetionEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation}};
+use orion::{events::kafka_event::UserGameDeletetionEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
 use serde_json::json;
 use tokio::{spawn, task::JoinHandle};
@@ -152,6 +152,7 @@ pub async fn do_listen(
     let mongo_db = context.get_mongo_db_client().database("user_game_events_db");
     let user_collection = mongo_db.collection::<UserGameRelation>("users");
     let game_collection = mongo_db.collection::<Game>("games");
+    let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
 
     loop {
         match stream_consumer.recv().await {
@@ -164,7 +165,8 @@ pub async fn do_listen(
                 let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
                 let user_game_deletion_event: UserGameDeletetionEvent = serde_json::from_str(&payload).unwrap();
                 let _ = user_collection.delete_one(doc! { "user_id": BsonUuid::parse_str(user_game_deletion_event.user_id.clone()).unwrap()}, None).await;
-                let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
+                let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id.clone()}, None).await;
+                let _ = user_turn_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
              
             }
                 

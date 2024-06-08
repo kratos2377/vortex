@@ -7,7 +7,7 @@ use crate::{common::schema_create_user_game_event::SCHEMA_NAME_CREATE_USER_GAME_
 
 
 
-#[derive(Clone , Deserialize , Serialize)]
+#[derive(Clone , Deserialize , Serialize, Debug)]
 pub struct GameEventPayload {
     pub user_id: String,
     pub game_event: String,
