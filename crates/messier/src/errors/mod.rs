@@ -37,6 +37,7 @@ pub enum Error {
 	ErrorWhileSendingRequest,
 	InvalidUserToken,
 	EntityNotFound,
+	ErrorWhileChangingGameStatus,
 	SamePasswordAsPreviousOne,
 	FriendRequestAlreadySent,
 	InvalidStatusSendAsPayload,
@@ -142,7 +143,7 @@ impl Error {
 			Self::GameLobbyDeletedOrRequestIsInvalid => (StatusCode::BAD_REQUEST, ClientError::GAME_LOBBY_DELETED_OR_REQUEST_IS_INVALID),
 			//Password Incorrect
 			Self::PasswordIncorrect => (StatusCode::BAD_REQUEST , ClientError::PASSWORD_INCORRECT),
-
+			Self::ErrorWhileChangingGameStatus => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_CHANGING_GAME_STATUS),
 			Self::ErrorWhileFetchingGameDetails => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_GAME_DETAILS),
 
 			Self::FailedToGetKeyFromRedis => (StatusCode::BAD_REQUEST, ClientError::FAILED_TO_GET_KEY_FROM_REDIS),
@@ -269,6 +270,7 @@ pub enum ClientError {
 	ERROR_WHILE_SENDING_KAFKA_EVENT,
 	JOIN_LOBBY_ERROR,
 	REMOVE_USER_FROM_LOBBY_ERROR,
+	ERROR_WHILE_CHANGING_GAME_STATUS,
 	NOT_ALL_PLAYERS_HAVE_READY_STATUS,
 	USERNAME_CHANGE_ERROR,
 	GAME_LOBBY_DELETED_OR_REQUEST_IS_INVALID,

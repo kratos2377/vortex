@@ -45,3 +45,12 @@ pub struct UserGameInviteKafkaEvent {
 pub struct UserGameDeletetionEvent {
     pub user_id: String
 }
+
+
+// Game Topic Kafka Events
+
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameGeneralKafkaEvent {
+    pub message: String,
+    pub game_id: String,
+}

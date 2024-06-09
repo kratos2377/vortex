@@ -10,8 +10,9 @@ pub const USER_STATUS_EVENT: &str = "user-status-event";
 pub const VERIFYING_GAME_STATUS: &str = "verifying-game-status";
 pub const ERROR_EVENT: &str = "error-event";
 
+//Game Events
 pub const USER_GAME_MOVE: &str = "user-game-move";
-
+pub const GAME_GENERAL_EVENT: &str = "game-general-event";
 //Redis Key
 pub const REDIS_USER_GAME_KEY: &str = "-user-game-id";
 pub const REDIS_USER_PLAYER_KEY: &str = "-user-player-type";

@@ -17,6 +17,7 @@ pub struct Game {
     pub is_staked: bool,
     pub current_state: String,
     pub state_index: i64,
+    // Description contains the status of game -> LOBBY or IN_PROGRESS
     pub description: String,
     pub staked_money_state: Option<StakedUsers>,
     pub poker_state: Option<PokerState>, 

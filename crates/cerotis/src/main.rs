@@ -5,8 +5,8 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
-use mqtt_events::user_mqtt_events::{send_game_invite_room_event_mqtt, send_game_move_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_online_event_event_mqtt};
-use orion::constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT};
+use mqtt_events::user_mqtt_events::{send_game_general_event_mqtt, send_game_invite_room_event_mqtt, send_game_move_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_online_event_event_mqtt};
+use orion::constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT};
 use rdkafka::{consumer::StreamConsumer, Message};
 use sea_orm::Database;
 use tokio::{spawn, task::JoinHandle};
@@ -205,6 +205,10 @@ pub async fn do_listen(
 
                     USER_GAME_MOVE => {
                         send_game_move_event_mqtt(cli , payload).await
+                    },
+
+                    GAME_GENERAL_EVENT => {
+                        send_game_general_event_mqtt(cli , payload).await
                     }
 
                     _ => {}

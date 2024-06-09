@@ -1,12 +1,12 @@
 use std::{collections::{HashMap, HashSet}, str::FromStr};
 
-use crate::{context, errors::{self, Error}, event_producer::user_events_producer::send_event_for_user_topic, state::AppDBState};
+use crate::{context, errors::{self, Error}, event_producer::{game_events_producer::send_game_general_events, user_events_producer::send_event_for_user_topic}, state::AppDBState};
 use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
 use bson::{doc, Document};
 use futures::{StreamExt, TryStreamExt};
 use mongodb::options::FindOptions;
-use orion::{constants::{GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::UserGameInviteKafkaEvent, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
+use orion::{constants::{GAME_GENERAL_EVENT, GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::{GameGeneralKafkaEvent, UserGameInviteKafkaEvent}, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
 use std::sync::{Arc, Mutex};
@@ -59,7 +59,7 @@ pub async fn create_lobby(
         is_staked: payload.game_type == "staked",
         current_state: "none".to_string(),
         state_index: 0,
-        description: "none".to_string(),
+        description: "LOBBY".to_string(),
         staked_money_state: None,
         poker_state: None,
     };
@@ -549,6 +549,7 @@ pub async fn start_game(
 
         let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
         let user_collection = mongo_db.collection::<UserGameRelation>("users");
+        let game_collection = mongo_db.collection::<Game>("games");
         let user_vec = user_collection.find(doc! { "game_id": payload.game_id.clone()}, None).await;
        
 if user_vec.is_err() {
@@ -563,6 +564,20 @@ for user in user_vec.iter() {
         return Err(Error::NotAllPlayersHaveReadyStatus);
     }
 }
+
+let gm_rsp = game_collection.update_one(doc! {  "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap() }, doc! { "$set": doc! {"description": "IN_PROGRESS".to_string()} }, None).await;
+
+if gm_rsp.is_err() {
+    return Err(Error::ErrorWhileChangingGameStatus)
+}
+
+let kafka_event = GameGeneralKafkaEvent {
+    message: "start-game".to_string(),
+    game_id: payload.game_id.clone(),
+
+};
+
+let _ = send_game_general_events(GAME_GENERAL_EVENT.to_string(), serde_json::to_string(&kafka_event).unwrap(), &state.producer).await;
 
         let body = Json(json!({
             "result": {
