@@ -50,7 +50,7 @@ pub async fn create_lobby(
         player_status: "not-ready".to_string(),
     };
 
-    let game_doc = Game {
+    let mut game_doc = Game {
         id: game_id,
         user_count: 1,
         host_id: payload.user_id.clone(),
@@ -63,6 +63,11 @@ pub async fn create_lobby(
         staked_money_state: None,
         poker_state: None,
     };
+
+    if payload.game_name == "chess" {
+        game_doc.current_state = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string();
+    }
+
     let user_turn_mapping_doc = UserTurnMapping {
         game_id: game_id.to_string().clone(),
         turn_mappings: vec![TurnModel { count_id: 1, user_id: payload.user_id.clone(), username: payload.username.clone() }],

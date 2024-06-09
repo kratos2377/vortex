@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[allow(unused)]
 pub struct KafkaConfiguration {
     pub broker: BrokerProperties,
+    pub consumer: Vec<ConsumerConfiguration>,
     pub producer: ProducerProperties,
     pub schema_registry: SchemaRegistryProperties,
 }

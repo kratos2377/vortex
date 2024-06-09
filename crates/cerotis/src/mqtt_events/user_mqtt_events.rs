@@ -1,4 +1,4 @@
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent}, mqtt_subscribe_events::{MQTT_GAME_EVENTS, MQTT_USER_EVENTS}, ws_events::{JoinedRoomPayload, LeavedRoomPayload}}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent}, mqtt_subscribe_events::{MQTT_GAME_EVENTS, MQTT_USER_EVENTS}, ws_events::{JoinedRoomPayload, LeavedRoomPayload}}, models::user_game_event::UserGameEvent};
 
 use super::mqtt_event_model::MQTTEventModel;
 
@@ -53,6 +53,16 @@ pub async fn send_game_invite_room_event_mqtt(cli: &mqtt::Client , payload: Stri
     let mqtt_user_message = mqtt::message::Message::new(MQTT_USER_EVENTS.to_string() + &game_invite_payload.user_who_we_are_sending_event ,  mqtt_payload, 0);
     cli.publish(mqtt_user_message).unwrap();
 
+
+} 
+
+pub async fn send_game_move_event_mqtt(cli: &mqtt::Client , payload: String) {
+
+    let game_move_payload: UserGameEvent = serde_json::from_str(&payload).unwrap();
+
+    let mqtt_payload = serde_json::to_string(&MQTTEventModel{ event_name: USER_GAME_MOVE.to_string(), payload }).unwrap();
+    let mqtt_user_message = mqtt::message::Message::new(MQTT_GAME_EVENTS.to_string() + &game_move_payload.user_game_move.game_id ,  mqtt_payload, 1);
+    cli.publish(mqtt_user_message).unwrap();
 
 } 
 

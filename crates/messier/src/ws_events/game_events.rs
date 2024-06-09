@@ -5,7 +5,7 @@ use redis::{Commands, Connection, RedisResult};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
 use std::{sync::{Arc, Mutex}, time::Duration};
 
-use crate::{ event_producer::{game_events_producer::{send_game_move_events, GameEventPayload, UserReadyEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, mongo::{kafka_event_models::{UserGameEvent, UserGameMove}, send_kafka_events_to_mongo::create_and_send_kafka_events, transaction::transactional}, state::WebSocketStates};
+use crate::{ event_producer::{game_events_producer::{send_game_move_events, GameEventPayload, UserReadyEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, state::WebSocketStates};
 
 
 pub fn create_ws_game_events(socket: SocketRef) {
@@ -68,7 +68,7 @@ pub fn create_ws_game_events(socket: SocketRef) {
         let  _ =  socket.broadcast().to(data.game_id).emit("send-user-game-event" , msg);
       
         async move {
-            send_game_move_events(&context , data_clone , socket.id.to_string()).await.unwrap();
+            send_game_move_events(&context , data_clone , socket.id.to_string() , producer).await.unwrap();
         }
 
     });

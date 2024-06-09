@@ -3582,6 +3582,7 @@ dependencies = [
  "config",
  "futures",
  "mongodb",
+ "orion",
  "rdkafka",
  "serde",
  "serde_bytes",
@@ -3589,6 +3590,8 @@ dependencies = [
  "serde_with 3.6.1",
  "tokio",
  "tokio-cron-scheduler",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]

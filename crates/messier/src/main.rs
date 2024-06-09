@@ -8,7 +8,7 @@ use socketioxide::{extract::SocketRef, socket, SocketIo};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
-use crate::{conf::configuration, context::context::ContextImpl, mongo::{event_converter::DynEventConverter, event_dispatcher::EventDispatcher, user_game_converter::UserGameEventConverter}, state::{AppDBState, WebSocketStates}};
+use crate::{conf::configuration, context::context::ContextImpl, state::{AppDBState, WebSocketStates}};
 
 
 pub mod errors;
@@ -22,7 +22,6 @@ pub mod context;
 pub mod ws_events;
 pub mod utils;
 pub mod conf;
-pub mod mongo;
 pub mod event_producer;
 pub mod mongo_pool;
 
@@ -43,18 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let redis_connection = client.get_connection().unwrap(); 
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
 
-    let user_mongo_event_converter: Arc<DynEventConverter> =
-    Arc::new(Box::new(UserGameEventConverter::new(&config.kafka)?));
-
-    //Initializing Event Dispatcher
-    let event_dispatcher = EventDispatcher::new(vec![
-        user_mongo_event_converter,
-    ]);
 
     let context = ContextImpl::new_dyn_context(
         mongo_db_client,
         Arc::new(Mutex::new(redis_connection)),
-        Arc::new(event_dispatcher),
         connection.clone()
     );
 

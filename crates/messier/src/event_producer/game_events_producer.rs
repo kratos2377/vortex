@@ -1,9 +1,12 @@
-use futures::FutureExt;
-use rdkafka::error::KafkaError;
+use std::time::Duration;
+
+use futures::{future, FutureExt};
+use orion::{constants::{USER_GAME_MOVE, USER_JOINED_ROOM}, events::kafka_event::KafkaGeneralEvent, models::user_game_event::{UserGameEvent, UserGameMove}};
+use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{common::schema_create_user_game_event::SCHEMA_NAME_CREATE_USER_GAME_EVENT, context::context::DynContext, mongo::{kafka_event_models::{UserGameEvent, UserGameMove}, send_kafka_events_to_mongo::create_and_send_kafka_events, transaction::transactional}};
+use crate::{common::schema_create_user_game_event::SCHEMA_NAME_CREATE_USER_GAME_EVENT, context::context::DynContext};
 
 
 
@@ -33,6 +36,7 @@ pub async fn send_game_move_events(
     context: &DynContext,
     game_event_payload: GameEventPayload,
     socket_id: String,
+    producer: &FutureProducer
  ) -> Result<(), KafkaError> {
  
      let input = UserGameEvent {
@@ -54,27 +58,34 @@ pub async fn send_game_move_events(
  
      };
  
- 
+     let kafka_events = vec![KafkaGeneralEvent {topic:"user_game_events".to_string(), payload: serde_json::to_string(&input).unwrap(), key: USER_GAME_MOVE.to_string() }];
      // Start transaction and execute query
-     let save_user_game_move_event = transactional(context.get_mongo_db_client(), |db_session| {
-         let event_dispatcher = context.get_event_dispatcher();
- 
-         let user_ws_event: UserGameEvent  = input.clone().into();
- 
-         async move {
- 
-             create_and_send_kafka_events(
-                 db_session,
-                 event_dispatcher,
-                 Box::new(user_ws_event.clone()),
-                 SCHEMA_NAME_CREATE_USER_GAME_EVENT,
-             )
-             .await.unwrap();
-             Ok(user_ws_event)
-         }
-         .boxed()
-     })
-     .await.unwrap();
+     producer.begin_transaction().unwrap();
+
+     let kafka_result = future::try_join_all(kafka_events.iter().map(|event| async move {
+        let delivery_result = producer
+        .send(
+            FutureRecord::to(&event.topic)
+                    .payload(&event.payload)
+                    .key(&event.key.clone()),
+            Duration::from_secs(3),
+        )
+        .await;
+
+    // This will be executed when the result is received.
+  //  println!("Delivery status for message {} received", i);
+    delivery_result
+
+    })
+
+    ).await;
+
+    match kafka_result {
+        Ok(_) => (),
+        Err(e) => return Err(e.0.into()),
+    }
+
+    producer.commit_transaction(Timeout::from(Duration::from_secs(5))).unwrap();
  
      Ok(())
  

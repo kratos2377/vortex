@@ -22,3 +22,8 @@ futures = "0.3.30"
 tokio-cron-scheduler = "0.10.0"
 serde_bytes = "0.11.14"
 anyhow = "1.0.81"
+
+tracing = "0.1.40"
+tracing-opentelemetry = "0.23.0"
+
+orion = {path = "../orion"}

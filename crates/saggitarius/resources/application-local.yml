@@ -21,16 +21,11 @@ kafka:
   broker:
     urls: localhost:9092
   consumer:
-    - id: user
+    - id: user_game_events
       topic:
-        - user
-      client_id: user.client.id
-      group_id: user.group.id
-    - id: game
-      topic:
-        - game
-      client_id: game.client.id
-      group_id: game.group.id
+        - user_game_events
+      client_id: user_game_events.client.id
+      group_id: user_game_events.group.id
   producer:
     client_id:  saggitarius
     transactional_id: saggitarius-transactions
