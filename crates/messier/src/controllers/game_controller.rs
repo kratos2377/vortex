@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::{HashMap, HashSet}, str::FromStr};
 
 use crate::{context, errors::{self, Error}, event_producer::user_events_producer::send_event_for_user_topic, state::AppDBState};
 use axum::{extract::{ State}, response::Response, Json};
@@ -45,7 +45,7 @@ pub async fn create_lobby(
     let user_doc = UserGameRelation {
         user_id: Uuid::from_str(&payload.user_id).unwrap(),
         username: payload.username.clone(),
-        game_id: Some(game_id.to_string().clone()),
+        game_id: game_id.to_string().clone(),
         player_type: "host".to_string(),
         player_status: "not-ready".to_string(),
     };
@@ -140,7 +140,7 @@ pub async fn join_lobby(
    let user_doc = UserGameRelation {
     user_id: Uuid::from_str(&payload.user_id).unwrap(),
     username: payload.username.clone(),
-    game_id: Some(payload.game_id.clone()),
+    game_id: payload.game_id.clone(),
     player_type: "player".to_string(),
     player_status: "not-ready".to_string(),
 };
@@ -336,7 +336,8 @@ pub async fn get_ongoing_games_for_user(
     }
 
     let get_user_friends_ids_vec = get_user_friends_ids.unwrap();
-
+    let mut game_sets: HashSet<String> = HashSet::new();
+    let mut game_id_gamemodel: HashMap<String, GetUsersOngoingGamesResponseModel> = HashMap::new();
     //Database name will change 
     let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
 
@@ -353,24 +354,40 @@ pub async fn get_ongoing_games_for_user(
         let res: Vec<UserGameRelation> = cursor.unwrap().try_collect().await.unwrap();
 
         if res.len() == 0 {
-            break;
+            continue;
+        }
+        let user_game_rel = res.get(0);
+        if user_game_rel.is_none() {
+            continue;
         }
 
-        if let Some(game_id) = &res.get(0).unwrap().game_id {
+        let user_game_rel_model = user_game_rel.unwrap();
+      
+        let game_id = &user_game_rel_model.game_id.clone();
+            if !game_sets.contains(game_id) {
+                game_sets.insert(game_id.to_string());
+                let game_cursor = game_collection.find(doc! { "id": BsonUuid::parse_str(game_id).unwrap() }, None).await.unwrap();
+                let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
+                let new_game_res = game_res.get(0).unwrap();
+                let new_game = GetUsersOngoingGamesResponseModel {
+                    game_id: new_game_res.id,
+                    game_type: new_game_res.game_type.clone(),
+                    is_staked: new_game_res.is_staked,
+                    total_money_staked: 0.0,
+                    usernames_playing: vec![user_game_rel_model.username.clone()],
+                };
+                game_id_gamemodel.insert(game_id.clone(),  new_game);
+            } else {
+                 let mut game_model = game_id_gamemodel.get_mut(game_id).unwrap();
+                 game_model.usernames_playing.push(user_game_rel_model.username.clone())
+            }
+            
+        
 
-            let game_cursor = game_collection.find(doc! { "id": BsonUuid::parse_str(game_id).unwrap() }, None).await.unwrap();
-            let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
-            let new_game_res = game_res.get(0).unwrap();
-            let new_game = GetUsersOngoingGamesResponseModel {
-                game_id: new_game_res.id,
-                game_type: new_game_res.game_type.clone(),
-                is_staked: new_game_res.is_staked,
-                total_money_staked: 0.0,
-            };
+    }
 
-            game_vec_results.push(new_game);
-        }
-
+    for (_,value ) in game_id_gamemodel {
+        game_vec_results.push(value);
     }
 
     
