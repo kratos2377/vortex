@@ -1,11 +1,11 @@
 use futures::future;
-use orion::{constants::{REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{ErrorMessagePayload, GameMessagePayload, GameStartPayload, GetUserTurnsMappingWSPayload, JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
+use orion::{constants::{GAME_GENERAL_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{GameGeneralKafkaEvent, KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{ErrorMessagePayload, GameMessagePayload, GameStartPayload, GetUserTurnsMappingWSPayload, JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
 use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, Connection, RedisResult};
 use socketioxide::{extract::{Data, SocketRef, State}, handler::ConnectHandler, socket};
 use std::{sync::{Arc, Mutex}, time::Duration};
 
-use crate::{ event_producer::{game_events_producer::{send_game_move_events, GameEventPayload, UserReadyEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, state::WebSocketStates};
+use crate::{ event_producer::{game_events_producer::{send_game_general_events, send_game_move_events, GameEventPayload, UserReadyEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, state::WebSocketStates};
 
 
 pub fn create_ws_game_events(socket: SocketRef) {
@@ -32,19 +32,21 @@ pub fn create_ws_game_events(socket: SocketRef) {
     });
 
 
-    socket.on("leaved-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| {
+    socket.on("leaved-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| async move {
         let data: LeavedRoomPayload = serde_json::from_str(&msg).unwrap();
         if data.player_type == "host" {
             let _ = socket.broadcast().to(data.game_id.clone()).emit("remove-all-users", msg.clone());
+            let kf_payload = serde_json::to_string(&GameGeneralKafkaEvent{message: "host-left".to_string(), game_id: data.game_id.clone()}).unwrap();
+            let _ = send_game_general_events(GAME_GENERAL_EVENT.to_string(), kf_payload, producer).await;
+           
         } else {
             let _ = socket.broadcast().to(data.game_id.clone()).emit("user-left-room" , msg.clone());
         }
         
         let _ = socket.leave(data.game_id);
 
-        async move {
             send_event_for_user_topic(&producer, &context, USER_LEFT_ROOM.to_string() ,msg).await.unwrap();
-         }
+         
     });
 
     socket.on("update-user-status-in-room", |socket: SocketRef ,  Data::<String>(msg), State(WebSocketStates { producer, context } )| {
@@ -61,15 +63,15 @@ pub fn create_ws_game_events(socket: SocketRef) {
     });
 
 
-    socket.on("game-event",    |socket: SocketRef , Data::<String>(msg), State(WebSocketStates { producer, context } )| {
+    socket.on("game-event",    |socket: SocketRef , Data::<String>(msg), State(WebSocketStates { producer, context } ) | async move {
         let data: GameEventPayload = serde_json::from_str(&msg).unwrap();
         let data_clone = data.clone();
 
         let  _ =  socket.broadcast().to(data.game_id).emit("send-user-game-event" , msg);
       
-        async move {
+
             send_game_move_events(&context , data_clone , socket.id.to_string() , producer).await.unwrap();
-        }
+        
 
     });
 
@@ -121,6 +123,8 @@ pub fn create_ws_game_events(socket: SocketRef) {
     
     if user_type == "host" {
         let _ = socket.broadcast().to(game_id.clone()).emit("remove-all-users", "no-data");
+        let kf_payload = serde_json::to_string(&GameGeneralKafkaEvent{message: "host-left".to_string(), game_id: game_id.clone()}).unwrap();
+        let _ = send_game_general_events(GAME_GENERAL_EVENT.to_string(), kf_payload, producer).await;
     }
 
     // Remove Keys from redis

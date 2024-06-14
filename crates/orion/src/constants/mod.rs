@@ -16,3 +16,10 @@ pub const GAME_GENERAL_EVENT: &str = "game-general-event";
 //Redis Key
 pub const REDIS_USER_GAME_KEY: &str = "-user-game-id";
 pub const REDIS_USER_PLAYER_KEY: &str = "-user-player-type";
+
+
+//Mongo Collections
+pub const MONGO_DB_NAME: &str = "user_game_events_db";
+pub const MONGO_USERS_MODEL: &str = "users";
+pub const MONGO_GAMES_MODEL: &str = "games";
+pub const MONGO_USER_TURNS_MODEL: &str = "user_turns";

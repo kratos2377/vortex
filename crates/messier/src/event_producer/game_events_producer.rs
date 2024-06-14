@@ -84,7 +84,7 @@ pub async fn send_game_move_events(
              user_id: game_event_payload.user_id,
              version: 1,
              user_move: game_event_payload.game_event,
-             socket_id,
+             socket_id: socket_id,
             move_type: game_event_payload.event_type,
              
          }

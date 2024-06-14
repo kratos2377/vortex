@@ -16,3 +16,9 @@ pub struct ChessPromotionEvent  {
     pub promoted_to: String,
     pub piece: String
 }
+
+#[derive(Debug, Deserialize , Serialize , Clone)]
+pub struct CellPosition {
+    pub x: i64,
+    pub y: i64
+}

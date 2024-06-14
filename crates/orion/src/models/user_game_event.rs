@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserGameEvent {
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
@@ -12,7 +12,7 @@ pub struct UserGameEvent {
 }
 
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserGameMove {
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]

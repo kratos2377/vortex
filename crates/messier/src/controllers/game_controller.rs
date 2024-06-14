@@ -6,7 +6,7 @@ use axum_macros::debug_handler;
 use bson::{doc, Document};
 use futures::{StreamExt, TryStreamExt};
 use mongodb::options::FindOptions;
-use orion::{constants::{GAME_GENERAL_EVENT, GAME_INVITE_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::{GameGeneralKafkaEvent, UserGameInviteKafkaEvent}, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
+use orion::{constants::{GAME_GENERAL_EVENT, GAME_INVITE_EVENT, MONGO_DB_NAME, MONGO_GAMES_MODEL, MONGO_USERS_MODEL, MONGO_USER_TURNS_MODEL, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::{GameGeneralKafkaEvent, UserGameInviteKafkaEvent}, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
 use redis::{Commands, Connection, RedisResult};
 use sea_orm::TryIntoModel;
 use std::sync::{Arc, Mutex};
@@ -16,7 +16,7 @@ use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetLobbyPlayersPayload, GetUserTurnMappingsPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, StartGamePayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
+use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetGameDetailsPayload, GetLobbyPlayersPayload, GetUserTurnMappingsPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, StartGamePayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
 pub async fn create_lobby(
@@ -30,7 +30,7 @@ pub async fn create_lobby(
 
     let game_id = Uuid::new_v4();
     let arc_redis_client = state.context.get_redis_db_client();
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
 
     let create_result = set_key_from_redis_int(&arc_redis_client , game_id.to_string() + "-game-id-count" , 1);
 
@@ -38,9 +38,9 @@ pub async fn create_lobby(
         return Err(Error::CreateLobbyError)
     }
 
-    let user_collection = mongo_db.collection::<UserGameRelation>("users");
-    let game_collection = mongo_db.collection::<Game>("games");
-    let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
+    let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
+    let user_turn_collection = mongo_db.collection::<UserTurnMapping>(MONGO_USER_TURNS_MODEL);
 
     let user_doc = UserGameRelation {
         user_id: Uuid::from_str(&payload.user_id).unwrap(),
@@ -105,7 +105,7 @@ pub async fn join_lobby(
     } 
 
     let arc_redis_client = &state.context.get_redis_db_client();
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");   
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);   
     let _: RedisResult<()> =  set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, payload.game_id.clone());
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "player".to_string());
     let mut get_game_result = get_key_from_redis_int(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
@@ -117,9 +117,9 @@ pub async fn join_lobby(
     let cnt = get_game_result.unwrap();
     let user_cnt_id = cnt + 1;
 
-   let game_collection = mongo_db.collection::<Game>("games");
-   let user_collection = mongo_db.collection::<UserGameRelation>("users");
-   let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
+   let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
+   let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+   let user_turn_collection = mongo_db.collection::<UserTurnMapping>(MONGO_USER_TURNS_MODEL);
    let game_res = game_collection.find(doc! { "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap() }, None).await;
 
    if game_res.is_err() {
@@ -227,12 +227,12 @@ pub async fn leave_lobby(
     let _: RedisResult<()> =  delete_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY);
     let _: RedisResult<()> = delete_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY);
 
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
     
 
-    let user_collection = mongo_db.collection::<UserGameRelation>("users");
-    let game_collection = mongo_db.collection::<Game>("games");
-    let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
+    let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
+    let user_turn_collection = mongo_db.collection::<UserTurnMapping>(MONGO_USER_TURNS_MODEL);
 
     let user_rsp = user_collection.delete_one(doc! { "game_id": payload.game_id.clone(), "user_id": payload.user_id.clone() }, None).await;
     
@@ -275,10 +275,10 @@ pub async fn destroy_lobby_and_game(
     if payload.game_id == "" {
         return Err(Error::MissingParamsError)
     }
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-    let user_collection = mongo_db.collection::<UserGameRelation>("users");
-    let game_collection = mongo_db.collection::<Game>("games");
-    let user_turns_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+    let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
+    let user_turns_collection = mongo_db.collection::<UserTurnMapping>(MONGO_USER_TURNS_MODEL);
 
 
     let game_Delete_query = game_collection.delete_one(doc! { "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap()}, None).await;
@@ -306,8 +306,8 @@ pub async fn get_lobby_players(
         return Err(Error::MissingParamsError)
     }
 
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-    let user_collection = mongo_db.collection::<UserGameRelation>("users");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+    let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
     let user_models_resp = user_collection.find(doc! { "game_id": payload.game_id.clone()}, None).await;
 
     if user_models_resp.is_err() {
@@ -344,10 +344,10 @@ pub async fn get_ongoing_games_for_user(
     let mut game_sets: HashSet<String> = HashSet::new();
     let mut game_id_gamemodel: HashMap<String, GetUsersOngoingGamesResponseModel> = HashMap::new();
     //Database name will change 
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
 
-    let user_collection = mongo_db.collection::<UserGameRelation>("users");
-    let game_collection = mongo_db.collection::<Game>("games");
+    let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
     let mut game_vec_results: Vec<GetUsersOngoingGamesResponseModel> = vec![];
     for user_model in get_user_friends_ids_vec.iter() {
         let usr_model = user_model.clone().try_into_model().unwrap();
@@ -418,9 +418,9 @@ pub async fn get_current_state_of_game(
     }
 
     //Database name will change 
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
 
-    let game_collection = mongo_db.collection::<Game>("games");
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
 
     let game_cursor = game_collection.find(doc! { "id": payload.game_id }, None).await.unwrap();
     let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
@@ -459,8 +459,8 @@ pub async fn update_player_status(
             return Err(Error::InvalidStatusSendAsPayload)
         }
 
-        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-        let user_collection = mongo_db.collection::<UserGameRelation>("users");
+        let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+        let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
         let user_model = user_collection.update_one(doc! { "user_id": BsonUuid::parse_str(payload.user_id.clone()).unwrap(), "game_id": payload.game_id.clone()}, doc! { "$set": doc! {"player_status": status_up} } ,None).await;
        
 if user_model.is_err() {
@@ -486,8 +486,8 @@ pub async fn verify_game_status(
         }
    
 
-        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-        let game_collection = mongo_db.collection::<Game>("games");
+        let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+        let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
         let game_model = game_collection.find_one(doc! { "host_id": payload.host_user_id.clone(), "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap(), "name": payload.game_name.clone()},None).await;
        
 if game_model.is_err() {
@@ -514,9 +514,9 @@ pub async fn remove_game_models(
         let  redis_conn = state.context.get_redis_db_client();
         let _: RedisResult<()> = delete_key_from_redis(&redis_conn, payload.user_id.clone() + REDIS_USER_GAME_KEY);
 
-        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-        let user_collection = mongo_db.collection::<UserGameRelation>("users");
-        let game_collection = mongo_db.collection::<Game>("games");
+        let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+        let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+        let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
         let user_model = user_collection.find_one(doc! { "user_id": BsonUuid::parse_str(payload.user_id.clone()).unwrap() }, None).await.unwrap().unwrap();
        
        if user_model.player_type == "host" {
@@ -547,9 +547,9 @@ pub async fn start_game(
             return Err(Error::MissingParamsError)
         }
 
-        let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-        let user_collection = mongo_db.collection::<UserGameRelation>("users");
-        let game_collection = mongo_db.collection::<Game>("games");
+        let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+        let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+        let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
         let user_vec = user_collection.find(doc! { "game_id": payload.game_id.clone()}, None).await;
        
 if user_vec.is_err() {
@@ -597,8 +597,8 @@ pub async fn get_user_turn_mappings(
         return Err(Error::MissingParamsError)
     }
 
-    let mongo_db = state.context.get_mongo_db_client().database("user_game_events_db");
-    let user_turns_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+    let user_turns_collection = mongo_db.collection::<UserTurnMapping>(MONGO_USER_TURNS_MODEL);
 
 
     let sort = doc! {
@@ -624,6 +624,39 @@ pub async fn get_user_turn_mappings(
             "success": true
         },
         "user_turns": res.get(0).unwrap()
+    }));
+
+    Ok(body)
+}
+
+
+pub async fn get_game_details(
+    state: State<AppDBState>,
+    payload: Json<GetGameDetailsPayload>
+) -> APIResult<Json<Value>> {
+
+    if payload.game_id == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
+
+
+
+    let game_model = game_collection.find_one(doc! { "id": BsonUuid::parse_str(payload.game_id.clone()).unwrap() }, None).await;
+
+    if game_model.is_err() {
+        return Err(Error::ErrorWhileFetchingGame)
+    } 
+
+    let res = game_model.unwrap().unwrap();
+
+    let body = Json(json!({
+        "result": {
+            "success": true
+        },
+        "game": res
     }));
 
     Ok(body)

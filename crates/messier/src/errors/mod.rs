@@ -27,6 +27,7 @@ pub enum Error {
 	RegistrationFail,
 	MissingParamsError,
 	ErrorWhileRetrievingLobbyUsers,
+	ErrorWhileFetchingGame,
 	GameLobbyDeletedOrRequestIsInvalid,
 	GameNotFound,
 	FailedToSetRedisKeyWithOptions,
@@ -183,6 +184,8 @@ impl Error {
 
 			Self::ErrorWhileFetchingUserTurns => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_TURNS),
 
+			Self::ErrorWhileFetchingGame => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_GAME),
+
 			//Create Lobby Error
 			Self::CreateLobbyError => (StatusCode::BAD_REQUEST, ClientError::CREATE_LOBBY_ERROR),
 			Self::JoinLobbyError => (StatusCode::BAD_REQUEST, ClientError::JOIN_LOBBY_ERROR),
@@ -276,6 +279,7 @@ pub enum ClientError {
 	GAME_LOBBY_DELETED_OR_REQUEST_IS_INVALID,
 	FAILED_TO_VERIFY_USER,
 	INVALID_USER_TOKEN,
+	ERROR_WHILE_FETCHING_GAME,
 	REDIS_GET_KEY_ERROR,
 	DELETE_LOBBY_ERROR,
 	GAME_CANNOT_BE_STARTED,

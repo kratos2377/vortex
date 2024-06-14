@@ -1,6 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, RedisResult};
 use sea_orm::TryIntoModel;
@@ -34,6 +34,10 @@ pub async fn send_event_for_user_topic(
 
         USER_LEFT_ROOM => {
             create_user_leaved_room_event(context , payload).await
+        },
+
+        USER_STATUS_EVENT => {
+            create_user_status_room_event(context , payload).await
         },
 
         VERIFYING_GAME_STATUS => {
@@ -192,6 +196,16 @@ pub async fn create_user_leaved_room_event(context: &DynContext, payload: String
         topic: "user".to_string(),
         payload: payload,
         key: "user-left-room".to_string(),
+    };
+    let results_resp: Vec<KafkaGeneralEvent> = vec![kafka_general_event];
+    return results_resp
+}
+
+pub async fn create_user_status_room_event(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
+    let kafka_general_event = KafkaGeneralEvent {
+        topic: "user".to_string(),
+        payload: payload,
+        key: USER_STATUS_EVENT.to_string(),
     };
     let results_resp: Vec<KafkaGeneralEvent> = vec![kafka_general_event];
     return results_resp

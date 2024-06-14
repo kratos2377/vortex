@@ -1,4 +1,4 @@
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT}, events::{kafka_event::{GameGeneralKafkaEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent}, mqtt_subscribe_events::{MQTT_GAME_EVENTS, MQTT_USER_EVENTS}, ws_events::{JoinedRoomPayload, LeavedRoomPayload}}, models::user_game_event::UserGameEvent};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{GameGeneralKafkaEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent}, mqtt_subscribe_events::{MQTT_GAME_EVENTS, MQTT_USER_EVENTS}, ws_events::{JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload}}, models::user_game_event::UserGameEvent};
 
 use super::mqtt_event_model::MQTTEventModel;
 
@@ -29,6 +29,17 @@ pub async fn send_user_left_room_event_mqtt(cli: &mqtt::Client , payload: String
 
     let mqtt_payload = serde_json::to_string(&MQTTEventModel{ event_name: USER_LEFT_ROOM.to_string(), payload }).unwrap();
     let mqtt_user_message = mqtt::message::Message::new(MQTT_GAME_EVENTS.to_string() + &leaved_room_payload.game_id ,  mqtt_payload, 1);
+    cli.publish(mqtt_user_message).unwrap();
+
+} 
+
+
+pub async fn send_user_status_room_event_mqtt(cli: &mqtt::Client , payload: String) {
+
+    let user_status_update_payload: UpdateUserStatusPayload = serde_json::from_str(&payload).unwrap();
+
+    let mqtt_payload = serde_json::to_string(&MQTTEventModel{ event_name: USER_STATUS_EVENT.to_string(), payload }).unwrap();
+    let mqtt_user_message = mqtt::message::Message::new(MQTT_GAME_EVENTS.to_string() + &user_status_update_payload.game_id ,  mqtt_payload, 1);
     cli.publish(mqtt_user_message).unwrap();
 
 } 
