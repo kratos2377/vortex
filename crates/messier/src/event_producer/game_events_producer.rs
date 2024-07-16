@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use futures::{future, FutureExt};
-use orion::{constants::{GAME_GENERAL_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM}, events::kafka_event::KafkaGeneralEvent, models::user_game_event::{UserGameEvent, UserGameMove}};
+use orion::{constants::{GAME_GENERAL_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM}, events::kafka_event::KafkaGeneralEvent, models::user_game_event::{UserGameMove}};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -73,23 +73,11 @@ pub async fn send_game_move_events(
     producer: &FutureProducer
  ) -> Result<(), KafkaError> {
  
-     let input = UserGameEvent {
-         id: Uuid::new_v4(),
-         version: 1,
-         name: game_event_payload.user_id.clone(),
-         description: "user_game_move".into(),
-         user_game_move: UserGameMove {
-             id: Uuid::new_v4(),
+     let input =  UserGameMove {
              game_id: game_event_payload.game_id,
              user_id: game_event_payload.user_id,
-             version: 1,
              user_move: game_event_payload.game_event,
-             socket_id: socket_id,
             move_type: game_event_payload.event_type,
-             
-         }
- 
- 
      };
  
      let kafka_events = vec![KafkaGeneralEvent {topic:"user_game_events".to_string(), payload: serde_json::to_string(&input).unwrap(), key: USER_GAME_MOVE.to_string() }];

@@ -5,7 +5,7 @@ use conf::{config_types::ServerConfiguration, configuration::SaggitariusConfigur
 use context::DynContext;
 use futures::future;
 use mongodb::bson::{self, doc};
-use orion::{constants::USER_GAME_MOVE, events::kafka_event::KafkaGeneralEvent, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameEvent}};
+use orion::{constants::USER_GAME_MOVE, events::kafka_event::KafkaGeneralEvent, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove}};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::BorrowedMessage, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use serde_json::json;
 use tokio::{spawn, task::JoinHandle};
@@ -166,17 +166,17 @@ pub async fn do_listen(
             if topic.to_string() == topic_name {
          
      
-                let user_game_event_payload: UserGameEvent = serde_json::from_str(&payload).unwrap();
+                let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
                 match key_name_string.as_str() {
                     
                     USER_GAME_MOVE => {
-                        let rsp = game_collection.find_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.user_game_move.game_id.clone()).unwrap()}, None).await;
+                        let rsp = game_collection.find_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, None).await;
                         let rsp_clone = rsp.clone();
                        if !rsp_clone.is_err() && !rsp_clone.unwrap().is_none() {
                         let game_model = rsp.unwrap().unwrap();
 
-                        let _rsp = if user_game_event_payload.user_game_move.move_type == "normal" {
-                            let gm_ev: ChessNormalEvent = serde_json::from_str(&user_game_event_payload.user_game_move.user_move).unwrap();
+                        let _rsp = if user_game_event_payload.move_type == "normal" {
+                            let gm_ev: ChessNormalEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
                 
                             let old_position: CellPosition = serde_json::from_str(&gm_ev.initial_cell).unwrap();
                             let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
@@ -184,15 +184,15 @@ pub async fn do_listen(
                     
                             let updated_fen = update_fen(&game_model.current_state, old_position.x, old_position.y, new_position.x, new_position.y, *piece.get(0).unwrap());
 
-                                game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.user_game_move.game_id.clone()).unwrap()}, doc! { "$set": doc! {"current_state": updated_fen} }, None).await
+                                game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"current_state": updated_fen} }, None).await
                         } else {
-                            let gm_ev: ChessPromotionEvent = serde_json::from_str(&user_game_event_payload.user_game_move.user_move).unwrap();
+                            let gm_ev: ChessPromotionEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
                             let old_position: CellPosition = serde_json::from_str(&gm_ev.initial_cell).unwrap();
                             let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
                             let piece: Vec<char> = gm_ev.piece.chars().collect();
                             let updated_fen = update_fen(&game_model.current_state, old_position.x, old_position.y, new_position.x, new_position.y, *piece.get(0).unwrap());
 
-                                game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.user_game_move.game_id.clone()).unwrap()}, doc! { "$set": doc! {"current_state": updated_fen} }, None).await
+                                game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"current_state": updated_fen} }, None).await
                         };
 
                        }
