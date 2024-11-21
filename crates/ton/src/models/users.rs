@@ -19,6 +19,7 @@ pub struct Model {
     pub score: i32,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub is_online: bool,
 }
 
 

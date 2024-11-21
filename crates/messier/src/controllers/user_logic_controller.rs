@@ -13,7 +13,7 @@ use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, us
 use axum::extract::State;
 use axum::Json;
 use errors::Result as APIResult;
-use sea_orm::{ActiveModelTrait, IntoActiveModel, TryIntoModel};
+use sea_orm::{ActiveModelTrait, Condition, IntoActiveModel, QueryFilter, TryIntoModel};
 use sea_orm::EntityTrait;
 use sea_orm::Set;
 use serde_json::json;
@@ -271,35 +271,24 @@ pub async fn get_user_online_friends(
 
 
      let mut results_resp: Vec<GetOnlineFriendsResponseModel>  = vec![];
-     let result = users_friends::Entity::find_by_user_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
+   //  let result = users_friends::Entity::find_user_online_friends(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
 
 
-
-     let arc_redis_client = state.context.get_redis_db_client();
-    
-        // Only add keys if the user_id key is present in redis cluster
-        // But we might have to use async redis because not able to pass data safely in threads in single thread
+    let result = Users::find().left_join(users::Entity::belongs_to(users_friends::Entity)
+    .from(users::Column::Id)
+    .to(users_friends::Column::UserId)).filter(
+        Condition::all().add(users_friends::Column::UserId.eq(user_id))
+        .add(users::Column::IsOnline.eq(true))
+    ).all(&state.conn).await;
         
-            for mo in result.iter() {
-  let user_friend: users_friends::Model = mo.clone().try_into_model().unwrap();
-                
+    if result.is_err() {
+        return Err(Error::ErrorWhileFetchingUserFriends)
+    }
+
     
-        
-            let friend_result = match Users::find_by_id(user_friend.friend_id)
-                .one(&state.conn)
-                .await
-            {
-                Ok(data) => data,
-                Err(err) => continue, // Skip to the next iteration on error
-            };
+            for mo in result.unwrap().iter() {
+             let user_type_details: Users::Model = mo.try_into_model().unwrap();
 
-            let user_type_details = friend_result.unwrap().try_into_model().unwrap();
-
-            let mut redisConnection  = arc_redis_client.lock().unwrap();
-            let does_friend_key_exist_in_redis: RedisResult<String> = redisConnection.get(user_type_details.id.to_string().clone());
-            if does_friend_key_exist_in_redis.is_err() || does_friend_key_exist_in_redis.unwrap() != "online" {
-               continue;
-            }
                 let online_friend_response=   GetOnlineFriendsResponseModel {
                     user_id: user_type_details.id.to_string(),
                     username: user_type_details.username,

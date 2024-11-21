@@ -1,6 +1,8 @@
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, Condition, QuerySelect};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use super::users;
 
 
 #[derive(Clone, Debug, Serialize , Deserialize , DeriveEntityModel)]
@@ -45,5 +47,11 @@ impl Entity {
     pub fn find_by_user_id(user_id: &Uuid) -> Select<Entity> {
         Self::find().filter(Column::UserId.eq(*user_id))
     }
+
+    // pub fn find_user_online_friends(user_id: &Uuid) -> Select<Entity> {
+    //     Self::find().join(sea_orm::JoinType::LeftJoin , Self::to()).filter(
+    //         Condition::all().add(Column::UserId.eq(*user_id)).add(users::Column::IsOnline.eq(true))
+    //     )
+    // }
 
 }
