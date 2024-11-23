@@ -174,7 +174,8 @@ pub async fn register_user(
         verified: Set(false),
         score: Set(0),
         created_at: Set(Utc::now().naive_utc()),
-        updated_at: Set(Utc::now().naive_utc())
+        updated_at: Set(Utc::now().naive_utc()),
+        is_online: Set(false)
      };
 
      let _result = new_user.insert(&state.conn).await.unwrap();
@@ -297,6 +298,7 @@ pub async fn verify_user(
         score: Set(user_recieved.score),
         email: Set(user_recieved.email),
         verified: Set(user_recieved.verified),
+        is_online: Set(false)
     };
 
     let rsp = user_active_model.save(&state.conn).await;

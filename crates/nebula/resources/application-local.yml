@@ -1,0 +1,5 @@
+server:
+  port: 3020
+
+postgres_url:
+  url: postgres://postgres:secret@localhost:5432/vortex

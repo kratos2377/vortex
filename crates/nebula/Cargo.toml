@@ -4,3 +4,38 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = "0.7.4"
+axum-macros = "0.4.1"
+chrono = { version = "0.4.32", features = ["serde"] }
+dotenv = "0.15.0"
+futures-util = "0.3.30"
+jsonwebtoken = "9.2.0"
+
+#serde
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_with = "3"
+
+sea-orm = {version="0.12.12" , features =[   "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros",
+    "debug-print"] }
+
+strum_macros = "0.25.3"
+tokio = { version = "1.35.1", features = ["full"] }
+tower = "0.4.13"
+tower-cookies = "0.10.0"
+tower-http = { version = "0.5.1", features = ["cors"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+uuid = { version = "1.7.0", features = ["serde", "v4"] }
+
+
+#external proj
+migration = { path = "../migration" }
+ton = { path = "../ton" }
+config = "0.14.0"
+futures = "0.3.30"
+async-trait = "0.1.79"
+opentelemetry = "0.22.0"
+tracing-opentelemetry = "0.23.0"

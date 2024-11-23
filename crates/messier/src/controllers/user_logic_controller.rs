@@ -4,6 +4,7 @@ use crate::event_producer::user_events_producer::send_event_for_user_topic;
 use crate::{errors::Error, event_producer::user_events_producer::create_friend_request_event};
 use crate::errors;
 use argon2::{self, Config};
+use migration::Expr;
 use orion::constants::FRIEND_REQUEST_EVENT;
 use orion::events::kafka_event::UserFriendRequestKafkaEvent;
 use redis::{Commands, Connection, RedisError, RedisResult};
@@ -13,12 +14,13 @@ use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, us
 use axum::extract::State;
 use axum::Json;
 use errors::Result as APIResult;
-use sea_orm::{ActiveModelTrait, Condition, IntoActiveModel, QueryFilter, TryIntoModel};
+use sea_orm::{ActiveModelTrait, Condition, IntoActiveModel, JoinType, QueryFilter, QuerySelect, RelationTrait, TryIntoModel};
 use sea_orm::EntityTrait;
 use sea_orm::Set;
 use serde_json::json;
 use serde_json::Value;
 use uuid::Uuid;
+use sea_orm::ColumnTrait;
 
 use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, ChangeUserPasswordPayload, ChangeUserUsernamePayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, SendRequestPayload};
 
@@ -274,11 +276,15 @@ pub async fn get_user_online_friends(
    //  let result = users_friends::Entity::find_user_online_friends(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
 
 
-    let result = Users::find().left_join(users::Entity::belongs_to(users_friends::Entity)
-    .from(users::Column::Id)
-    .to(users_friends::Column::UserId)).filter(
-        Condition::all().add(users_friends::Column::UserId.eq(user_id))
-        .add(users::Column::IsOnline.eq(true))
+    let result = users::Entity::find().join(
+        JoinType::InnerJoin,
+       users_friends::Relation::Users.def(),
+    )
+    .filter(
+        Condition::all()
+            .add(users::Column::Id.eq(payload.user_id))
+            .add(users_friends::Column::FriendId.is_not_null())
+            .add(users::Column::IsOnline.eq(true)),
     ).all(&state.conn).await;
         
     if result.is_err() {
@@ -287,7 +293,7 @@ pub async fn get_user_online_friends(
 
     
             for mo in result.unwrap().iter() {
-             let user_type_details: Users::Model = mo.try_into_model().unwrap();
+             let user_type_details: users::Model = mo.clone().try_into_model().unwrap();
 
                 let online_friend_response=   GetOnlineFriendsResponseModel {
                     user_id: user_type_details.id.to_string(),

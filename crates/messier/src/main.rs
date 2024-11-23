@@ -4,7 +4,6 @@ use axum::{handler::Handler, Router};
 use dotenv::dotenv;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
-use socketioxide::{extract::SocketRef, socket, SocketIo};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
@@ -51,14 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
   
   let kafka_producer = kafka::init_producer::create_new_kafka_producer(&config.kafka).unwrap();
-  let socket_kafka_producer = kafka::init_producer::create_new_kafka_producer(&config.kafka).unwrap();
-  let context_clone = context.clone();
   let state = AppDBState {conn: connection , from_email: config.email_config.from_email , smtp_key: config.email_config.smtp_key, context: context, producer: kafka_producer };
-    // let websocket_states = WebSocketStates { producer: socket_kafka_producer , context: context_clone };
-    // let (layer, io) = SocketIo::builder().with_state(websocket_states).build_layer();
 
-    // io.ns("/",   ws_events::game_events::create_ws_game_events);
-    // build our application with a route
     let user_auth_routes = routes::user_auth_routes::create_user_routes() ;
     let user_logic_routes = routes::user_logic_routes::create_user_logic_routes();
     let game_routes = routes::game_logic_routes::create_game_routes();
