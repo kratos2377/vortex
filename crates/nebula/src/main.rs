@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::Router;
 use routes::user_game_bet_routes;
 use sea_orm::Database;
@@ -13,6 +15,7 @@ pub mod routes;
 pub mod utils;
 pub mod state;
 pub mod errors;
+pub mod mongo_pool;
 
 
 #[tokio::main]
@@ -27,7 +30,9 @@ async fn main()-> Result<(), Box<dyn std::error::Error>>  {
           Err(e) => panic!("{:?}",e)
       };
   
-      let state = AppDBState {conn: connection };
+      let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
+
+      let state = AppDBState {conn: connection, mongo_conn: mongo_db_client };
 
       let user_game_bet_routes = routes::user_game_bet_routes::create_user_game_bet_routes() ;
       let routes_all = Router::new()

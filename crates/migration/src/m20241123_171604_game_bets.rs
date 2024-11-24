@@ -22,8 +22,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(GameBets::UserId).uuid().not_null())
                     .col(ColumnDef::new(GameBets::GameId).uuid().not_null())
                     .col(ColumnDef::new(GameBets::GameName).string().not_null())
+                    .col(ColumnDef::new(GameBets::Status).string().not_null())
                     .col(ColumnDef::new(GameBets::BetAmount).double().not_null())
-                    .col(ColumnDef::new(GameBets::CreatedAt).date_time().not_null())
                     .index(
                         Index::create().name("vortex-gamebets-userid-index")
                         .col(GameBets::UserId)
@@ -60,7 +60,7 @@ enum GameBets {
     GameId,
     GameName,
     BetAmount,
-    CreatedAt,
+    Status,
 }
 
 

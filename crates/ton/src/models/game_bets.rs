@@ -1,7 +1,6 @@
-use sea_orm::{entity::prelude::*, DeleteMany};
+use sea_orm::{entity::prelude::*, Condition, DeleteMany};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::NaiveDateTime;
 
 #[derive(Clone, Debug, Deserialize , Serialize, DeriveEntityModel)]
 #[sea_orm(table_name = "game_bets")]
@@ -12,7 +11,7 @@ pub struct Model {
     pub game_id: Uuid,
     pub game_name: String,
     pub bet_amount: f64,
-    pub created_at: NaiveDateTime,
+    pub status: String,
 }
 
 
@@ -56,5 +55,21 @@ impl Entity {
         Self::find().filter(Column::GameId.eq(game_id))
     }
 
+    pub fn find_by_user_id_and_game_name(game_name: String ,  user_id: Uuid) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::UserId.eq(user_id))
+            .add(Column::GameName.eq(game_name))
+        )
+    }
+
+
+    pub fn find_by_user_id_and_game_id(game_id: Uuid ,  user_id: Uuid) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::UserId.eq(user_id))
+            .add(Column::GameId.eq(game_id))
+        )
+    }
     
 }

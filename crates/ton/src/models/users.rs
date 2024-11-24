@@ -17,8 +17,8 @@ pub struct Model {
     pub last_name: String,
     pub verified: bool,
     pub score: i32,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
     pub is_online: bool,
 }
 

@@ -3,7 +3,7 @@ use std::{collections::{HashMap, HashSet}, str::FromStr};
 use crate::{context, errors::{self, Error}, event_producer::{game_events_producer::send_game_general_events, user_events_producer::send_event_for_user_topic}, state::AppDBState};
 use axum::{extract::{ State}, response::Response, Json};
 use axum_macros::debug_handler;
-use bson::{doc, Document};
+use bson::{doc, DateTime, Document};
 use futures::{StreamExt, TryStreamExt};
 use mongodb::options::FindOptions;
 use orion::{constants::{GAME_GENERAL_EVENT, GAME_INVITE_EVENT, MONGO_DB_NAME, MONGO_GAMES_MODEL, MONGO_USERS_MODEL, MONGO_USER_TURNS_MODEL, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::{GameGeneralKafkaEvent, UserGameInviteKafkaEvent}, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
@@ -62,6 +62,8 @@ pub async fn create_lobby(
         description: "LOBBY".to_string(),
         staked_money_state: None,
         poker_state: None,
+        created_at: DateTime::now(),
+        updated_at: DateTime::now(),
     };
 
     if payload.game_name == "chess" {
@@ -660,14 +662,6 @@ pub async fn get_game_details(
     }));
 
     Ok(body)
-}
-
-
-pub async fn stake_in_game(
-    state: State<AppDBState>,
-    payload: Json<GetGameCurrentStatePayload>
-) -> APIResult<Json<Value>> {
-    todo!()
 }
 
 

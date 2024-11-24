@@ -1,6 +1,7 @@
 use core::f64;
 use std::collections::HashMap;
 
+use bson::DateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -21,6 +22,8 @@ pub struct Game {
     pub description: String,
     pub staked_money_state: Option<StakedUsers>,
     pub poker_state: Option<PokerState>, 
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 

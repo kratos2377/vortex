@@ -28,7 +28,16 @@ pub enum Error {
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
-
+	MissingParams,
+	ErrorWhileFetchingGameModel,
+	NoUserIdFound,
+	InvalidParams,
+	CannotPlaceNewBetForSameGame,
+	CannotBetSinceBetTimeHasElapsed,
+	ErrorWhileFetchingUserBets,
+	ErrorWhilePlacingBet,
+	ErrorWhileFetchingExistingBet,
+	ErrorWhileUpdatingGameBet,
 	TicketDeleteFailIdNotFound { id: u64 },
 }
 
@@ -70,8 +79,19 @@ impl Error {
 		#[allow(unreachable_patterns)]
 		match self {
 			Self::LoginFail => (StatusCode::UNAUTHORIZED, ClientError::LOGIN_FAIL),
-		
+			Self::MissingParams => (StatusCode::BAD_REQUEST, ClientError::MISSING_PARAMS),
+			Self::NoUserIdFound => (StatusCode::BAD_REQUEST , ClientError::NO_USER_ID_FOUND),
+			Self::ErrorWhileFetchingGameModel => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_GAME_MODEL),
 
+			Self::ErrorWhileFetchingUserBets => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_USER_BETS),
+			Self::InvalidParams => (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS),
+			Self::CannotBetSinceBetTimeHasElapsed => (StatusCode::BAD_REQUEST, ClientError::CANNOT_BET_SINCE_BET_TIME_HAS_ELAPSED),
+			Self::CannotPlaceNewBetForSameGame => (StatusCode::BAD_REQUEST, ClientError::CANNOT_PLACE_NEW_BET_FOR_SAME_GAME),
+			Self::ErrorWhilePlacingBet => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_PLACING_BET),
+		
+		
+			Self::ErrorWhileFetchingExistingBet => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_FETCHING_EXISTING_BET),
+			Self::ErrorWhileUpdatingGameBet => (StatusCode::BAD_REQUEST, ClientError::ERROR_WHILE_UPDATING_GAME_BET),
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -98,7 +118,16 @@ impl Error {
 pub enum ClientError {
 	LOGIN_FAIL,
 	NO_AUTH,
+	NO_USER_ID_FOUND,
 	INVALID_PARAMS,
+	MISSING_PARAMS,
 	SERVICE_ERROR,
+	CANNOT_PLACE_NEW_BET_FOR_SAME_GAME,
+	CANNOT_BET_SINCE_BET_TIME_HAS_ELAPSED,
+	ERROR_WHILE_FETCHING_GAME_MODEL,
+	ERROR_WHILE_FETCHING_USER_BETS,
+	ERROR_WHILE_PLACING_BET,
+	ERROR_WHILE_FETCHING_EXISTING_BET,
+	ERROR_WHILE_UPDATING_GAME_BET,
 	INVALID_EMAIL_USER_KEY
 }
