@@ -13,8 +13,8 @@ pub fn create_user_logic_routes() -> Router<AppDBState> {
     .route("/get_user_wallets", post(controllers::user_logic_controller::get_user_wallets))
     .route("/delete_wallet_address", post(controllers::user_logic_controller::delete_wallet_address))
     .route("/get_user_online_friends", get(controllers::user_logic_controller::get_user_online_friends))
-    .route("/change_user_password", get(controllers::user_logic_controller::change_user_password))
-    .route("/change_user_username", get(controllers::user_logic_controller::change_user_username))
+    .route("/change_user_password", put(controllers::user_logic_controller::change_user_password))
+    .route("/change_user_username", put(controllers::user_logic_controller::change_user_username))
     .route_layer(middleware::from_fn(utils::middleware::guard))
 
 }
