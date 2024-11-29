@@ -1,13 +1,12 @@
 use std::sync::{Arc, Mutex};
 
 use axum::{handler::Handler, Router};
-use dotenv::dotenv;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
-use crate::{conf::configuration, context::context::ContextImpl, state::{AppDBState, WebSocketStates}};
+use crate::{conf::configuration, context::context::ContextImpl, state::AppDBState};
 
 
 pub mod errors;

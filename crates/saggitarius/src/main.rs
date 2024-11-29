@@ -1,12 +1,12 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
-use axum::{http::Error, response::IntoResponse, routing::get, Router};
+use axum::{response::IntoResponse, routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::SaggitariusConfiguration};
 use context::DynContext;
 use futures::future;
 use mongodb::bson::{self, doc};
 use orion::{constants::USER_GAME_MOVE, events::kafka_event::KafkaGeneralEvent, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove}};
-use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::BorrowedMessage, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
+use rdkafka::{consumer::StreamConsumer, error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use serde_json::json;
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;

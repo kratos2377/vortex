@@ -1,9 +1,8 @@
 use std::{collections::{HashMap, HashSet}, str::FromStr};
 
-use crate::{context, errors::{self, Error}, event_producer::{game_events_producer::send_game_general_events, user_events_producer::send_event_for_user_topic}, state::AppDBState};
-use axum::{extract::{ State}, response::Response, Json};
-use axum_macros::debug_handler;
-use bson::{doc, DateTime, Document};
+use crate::{errors::{self, Error}, event_producer::{game_events_producer::send_game_general_events, user_events_producer::send_event_for_user_topic}, state::AppDBState};
+use axum::{extract::{ State}, Json};
+use bson::{doc, DateTime};
 use futures::{StreamExt, TryStreamExt};
 use mongodb::options::FindOptions;
 use orion::{constants::{GAME_GENERAL_EVENT, GAME_INVITE_EVENT, MONGO_DB_NAME, MONGO_GAMES_MODEL, MONGO_USERS_MODEL, MONGO_USER_TURNS_MODEL, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY}, events::kafka_event::{GameGeneralKafkaEvent, UserGameInviteKafkaEvent}, models::{game_model::Game, user_game_relation_model::UserGameRelation, user_turn_model::{TurnModel, UserTurnMapping}}};
@@ -15,7 +14,7 @@ use errors::Result as APIResult;
 use ton::models;
 use uuid::Uuid;
 use bson::Uuid as BsonUuid;
-use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
+use models::users_friends::{Entity as UsersFriends};
 use super::payloads::{CreateLobbyPayload, DestroyLobbyPayload, GetGameCurrentStatePayload, GetGameDetailsPayload, GetLobbyPlayersPayload, GetUserTurnMappingsPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, JoinLobbyPayload, RemoveGameModelsPayload, SendGameEventAPIPayload, StartGamePayload, UpdatePlayerStatusPayload, VerifyGameStatusPayload};
 
 
@@ -110,7 +109,7 @@ pub async fn join_lobby(
     let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);   
     let _: RedisResult<()> =  set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_GAME_KEY, payload.game_id.clone());
     let _: RedisResult<()> = set_key_from_redis(&arc_redis_client, payload.user_id.clone() + REDIS_USER_PLAYER_KEY, "player".to_string());
-    let mut get_game_result = get_key_from_redis_int(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
+    let get_game_result = get_key_from_redis_int(arc_redis_client.clone(), payload.game_id.to_string() + "-game-id-count");
     incr_redis_key(&arc_redis_client, payload.game_id.to_string() + "-game-id-count");
     if get_game_result.is_err() {
         return Err(Error::JoinLobbyError)
@@ -385,7 +384,7 @@ pub async fn get_ongoing_games_for_user(
                 };
                 game_id_gamemodel.insert(game_id.clone(),  new_game);
             } else {
-                 let mut game_model = game_id_gamemodel.get_mut(game_id).unwrap();
+                 let game_model = game_id_gamemodel.get_mut(game_id).unwrap();
                  game_model.usernames_playing.push(user_game_rel_model.username.clone())
             }
             

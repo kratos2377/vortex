@@ -1,10 +1,9 @@
 use futures::future;
-use orion::{constants::{GAME_GENERAL_EVENT, REDIS_USER_GAME_KEY, REDIS_USER_PLAYER_KEY, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{GameGeneralKafkaEvent, KafkaGeneralEvent, UserGameDeletetionEvent}, ws_events::{ErrorMessagePayload, GameMessagePayload, GameStartPayload, GetUserTurnsMappingWSPayload, JoinedRoomPayload, LeavedRoomPayload, UpdateUserStatusPayload, UserConnectionEventPayload, UserKafkaPayload, VerifyingStatusPayload}}};
-use rdkafka::{error::KafkaError, message::{Header, OwnedHeaders}, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
+use orion::events::kafka_event::{KafkaGeneralEvent, UserGameDeletetionEvent};
+use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{Commands, Connection, RedisResult};
 use std::{sync::{Arc, Mutex}, time::Duration};
 
-use crate::{ event_producer::{game_events_producer::{send_game_general_events, send_game_move_events, GameEventPayload, UserReadyEventPayload}, user_events_producer::send_event_for_user_topic}, kafka::model::{Event, EventList}, state::WebSocketStates};
 
 
 pub fn create_ws_game_events() {

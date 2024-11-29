@@ -1,13 +1,11 @@
-use std::{str::FromStr, sync::MutexGuard};
+use std::str::FromStr;
 
 use crate::event_producer::user_events_producer::send_event_for_user_topic;
-use crate::{errors::Error, event_producer::user_events_producer::create_friend_request_event};
+use crate::errors::Error;
 use crate::errors;
 use argon2::{self, Config};
-use migration::Expr;
 use orion::constants::FRIEND_REQUEST_EVENT;
 use orion::events::kafka_event::UserFriendRequestKafkaEvent;
-use redis::{Commands, Connection, RedisError, RedisResult};
 use ton::models::{self, users, users_wallet_keys};
 use crate::state::AppDBState;
 use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
@@ -43,7 +41,7 @@ pub async fn send_request(
     if friend_user_option.is_none() {
         return Err(Error::UsernameNotFound)
     }
-    let mut user_found = friend_user_option.unwrap();
+    let user_found = friend_user_option.unwrap();
     
     let user_friend_relation =  UsersFriendsRequests::find_by_user_id_and_received_id(&Uuid::from_str(&payload.user_id).unwrap(), &user_found.id.clone()).one(&state.conn).await;
 

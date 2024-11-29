@@ -7,7 +7,7 @@ use super::{api_error::APIError, jwt::decode_jwt};
 
 
 
-pub async fn guard(mut req: Request, next: Next) -> Result<Response,APIError> {
+pub async fn guard(req: Request, next: Next) -> Result<Response,APIError> {
 
     let token = req.headers().get("Authorization")
     .ok_or(APIError { message: "No Auth token found".to_owned(), status_code: StatusCode::BAD_REQUEST, error_code: Some(40)  })?.to_owned();

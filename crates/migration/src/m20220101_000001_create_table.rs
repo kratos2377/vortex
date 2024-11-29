@@ -29,14 +29,6 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Users::Score).integer().not_null().default(Value::from(0)))
                     .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
                     .col(ColumnDef::new(Users::UpdatedAt).date_time().not_null())
-                    .index(
-                        Index::create().name("vortex-user-email-index")
-                        .col(Users::Email)
-                    )
-                    .index(
-                        Index::create().name("vortex-user-username-index")
-                        .col(Users::Username)
-                    )
                     .to_owned(),
             )
             .await;
@@ -55,14 +47,6 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(UsersFriends::UserId).uuid().not_null())
                     .col(ColumnDef::new(UsersFriends::FriendId).uuid().not_null())
-                    .index(
-                        Index::create().name("vortex-userfriends-userid-index")
-                        .col(UsersFriends::UserId)
-                    )
-                    .index(
-                        Index::create().name("vortex-userfriends-friendid-index")
-                        .col(UsersFriends::FriendId)
-                    )
                     .foreign_key(
                         ForeignKey::create()
                         .name("fk-user_friend")
@@ -88,10 +72,6 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(UsersWallets::UserId).uuid().not_null())
                     .col(ColumnDef::new(UsersWallets::WalletAddress).string().not_null())
                     .col(ColumnDef::new(UsersWallets::WalletType).string().not_null())
-                    .index(
-                        Index::create().name("vortex-userwallets-userid-index")
-                        .col(UsersWallets::UserId)
-                    )
                     .foreign_key(
                         ForeignKey::create()
                         .name("fk-wallet_user_id")
@@ -115,10 +95,6 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(UsersFriendsRequests::UserSentId).uuid().not_null())
                     .col(ColumnDef::new(UsersFriendsRequests::UserRecievedId).uuid().not_null())
-                    .index(
-                        Index::create().name("vortex-usersfriendsrequests-userrecievedid-index")
-                        .col(UsersFriendsRequests::UserRecievedId)
-                    )
                     .foreign_key(
                         ForeignKey::create()
                         .name("fk-user_sent_id")

@@ -12,10 +12,9 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
 use argon2::{self, Config};
-use axum_macros::debug_handler;
 use chrono::Utc;
 use lazy_regex::Regex;
-use redis::{Commands, Connection, RedisError, RedisResult, SetOptions};
+use redis::{Commands, Connection, RedisResult, SetOptions};
 use ton::models::users::{self , Entity as Users};
 use errors::Result;
 use sea_orm::ActiveModelTrait;
@@ -78,7 +77,7 @@ pub async fn login_user(
        return Err(Error::MissingParamsError)
     }
 
-    let mut user_found;
+    let user_found;
     if payload.usernameoremail.contains("@") {
       let user = Users::find_by_email(&payload.usernameoremail).one(&state.conn).await.unwrap();
 

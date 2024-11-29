@@ -1,13 +1,8 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT, VERIFYING_GAME_STATUS}, events::{kafka_event::{KafkaGeneralEvent, UserFriendRequestKafkaEvent, UserGameInviteKafkaEvent, UserOnlineKafkaEvent}, ws_events::{JoinedRoomPayload, UserConnectionEventPayload}}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_INVITE_EVENT}, events::kafka_event::KafkaGeneralEvent};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
-use redis::{Commands, RedisResult};
-use sea_orm::TryIntoModel;
 use futures_util::future;
-use ton::models::{self, users, users_wallet_keys};
-use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, users_friends::{self, Entity as UsersFriends}, users::{Entity as Users}};
-use uuid::Uuid;
 use crate::context::context::DynContext;
 
 

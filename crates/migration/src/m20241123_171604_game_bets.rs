@@ -24,14 +24,6 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(GameBets::GameName).string().not_null())
                     .col(ColumnDef::new(GameBets::Status).string().not_null())
                     .col(ColumnDef::new(GameBets::BetAmount).double().not_null())
-                    .index(
-                        Index::create().name("vortex-gamebets-userid-index")
-                        .col(GameBets::UserId)
-                    )
-                    .index(
-                        Index::create().name("vortex-gamebets-gameid-index")
-                        .col(GameBets::GameId)
-                    )
                     .foreign_key(
                         ForeignKey::create()
                         .name("fk-game-bets-user-id")

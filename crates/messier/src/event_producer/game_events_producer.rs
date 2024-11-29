@@ -1,12 +1,11 @@
 use std::time::Duration;
 
 use futures::{future, FutureExt};
-use orion::{constants::{GAME_GENERAL_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM}, events::kafka_event::KafkaGeneralEvent, models::user_game_event::{UserGameMove}};
+use orion::{constants::USER_GAME_MOVE, events::kafka_event::KafkaGeneralEvent, models::user_game_event::{UserGameMove}};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{common::schema_create_user_game_event::SCHEMA_NAME_CREATE_USER_GAME_EVENT, context::context::DynContext};
+use crate::context::context::DynContext;
 
 
 
