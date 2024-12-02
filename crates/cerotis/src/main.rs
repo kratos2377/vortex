@@ -5,12 +5,16 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
-use mqtt_events::all_mqtt_events::{send_game_general_event_mqtt, send_game_invite_room_event_mqtt, send_game_move_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_online_event_event_mqtt, send_user_status_room_event_mqtt};
-use orion::constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT};
+use mqtt_events::all_mqtt_events::{send_game_general_event_mqtt, send_game_invite_room_event_mqtt, send_game_move_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_status_room_event_mqtt};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::UserFriendRequestKafkaEvent, ws_events::UserConnectionEventPayload}};
 use rdkafka::{consumer::StreamConsumer, Message};
-use sea_orm::Database;
+use sea_orm::{Database, Set};
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
+use ton::models;
+use models::users;
+use uuid::Uuid;
+use sea_orm::ActiveModelTrait;
 
 pub mod kafka;
 pub mod conf;
@@ -184,7 +188,8 @@ pub async fn do_listen(
                 let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
                 match key_name_string.as_str() {
                     USER_ONLINE_EVENT => {
-                            send_user_online_event_event_mqtt(cli , payload).await
+                            change_user_online_status_in_db(&context , payload.clone()).await;
+                           // send_user_online_event_event_mqtt(cli , payload).await
                     },
 
                     USER_JOINED_ROOM => {
@@ -226,4 +231,25 @@ pub async fn do_listen(
             }
         }
     }
+}
+
+
+pub async fn change_user_online_status_in_db(context: &DynContext , user_online_payload: String) {
+    // let user_payload: UserConnectionEventPayload = serde_json::from_str(&user_online_payload).unwrap();
+    // let db_connection = context.get_postgres_db_client();
+
+
+    // let user = users::Entity::find_by_id(Uuid::parse_str(&user_payload.user_id).unwrap()).one(&db_connection).await.unwrap();
+    // let mut user_model: users::ActiveModel = user.unwrap().into();
+    // user_model.is_online = Set(true);
+
+
+    // let res = user_model.update(&db_connection).await;
+
+    // if res.is_err() {
+    //  println!("Error while changed user online status. Error occurred={:?}" , res.err().unwrap());
+    // } else {
+    //     println!("Successfully updated user is_online status for user_id={:?}" , user_payload.user_id);
+    // }
+
 }

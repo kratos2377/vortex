@@ -2,15 +2,17 @@ use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EV
 
 use super::mqtt_event_model::MQTTEventModel;
 
-pub async fn send_user_online_event_event_mqtt(cli: &mqtt::Client , payload: String) {
+// THis is not needed anymore as we will update the Postgres DB directly regarding the User online status
+//Each user can then execute a query which will return the Online Friends
+// pub async fn send_user_online_event_event_mqtt(cli: &mqtt::Client , payload: String) {
 
-    let user_friend_event: UserFriendRequestKafkaEvent = serde_json::from_str(&payload).unwrap();
+//     let user_friend_event: UserFriendRequestKafkaEvent = serde_json::from_str(&payload).unwrap();
 
-    let mqtt_payload = serde_json::to_string(&MQTTEventModel{ event_name: USER_ONLINE_EVENT.to_string(), payload }).unwrap();
-    let mqtt_user_message = mqtt::message::Message::new(MQTT_USER_EVENTS.to_string() + &user_friend_event.user_who_we_are_sending_event ,  mqtt_payload, 0);
-    cli.publish(mqtt_user_message).unwrap();
+//     let mqtt_payload = serde_json::to_string(&MQTTEventModel{ event_name: USER_ONLINE_EVENT.to_string(), payload }).unwrap();
+//     let mqtt_user_message = mqtt::message::Message::new(MQTT_USER_EVENTS.to_string() + &user_friend_event.user_who_we_are_sending_event ,  mqtt_payload, 0);
+//     cli.publish(mqtt_user_message).unwrap();
 
-}
+// }
 
 pub async fn send_user_joined_room_event_mqtt(cli: &mqtt::Client , payload: String) {
 

@@ -12,7 +12,7 @@ use models::{users_friends_requests::{self , Entity as UsersFriendsRequests}, us
 use axum::extract::State;
 use axum::Json;
 use errors::Result as APIResult;
-use sea_orm::{ActiveModelTrait, Condition, IntoActiveModel, JoinType, QueryFilter, QuerySelect, RelationTrait, TryIntoModel};
+use sea_orm::{ActiveModelTrait, Condition, DbBackend, IntoActiveModel, JoinType, QueryFilter, QuerySelect, RelationTrait, Statement, TryIntoModel};
 use sea_orm::EntityTrait;
 use sea_orm::Set;
 use serde_json::json;
@@ -274,18 +274,20 @@ pub async fn get_user_online_friends(
    //  let result = users_friends::Entity::find_user_online_friends(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await.unwrap();
 
 
-    let result = users::Entity::find().join(
-        JoinType::InnerJoin,
-       users_friends::Relation::Users.def(),
+    let result = users::Entity::find().from_raw_sql(
+        Statement::from_sql_and_values(DbBackend::Postgres, 
+            
+            r#"SELECT "u2"."id", "u2"."first_name", "u2"."last_name", "u2"."email", "u2"."password", "u2"."username",
+            "u2"."verified", "u2"."score", "u2"."is_online", "u2"."created_at", "u2"."updated_at" FROM "users" "u1" JOIN "users_friends" "uf" ON "u1"."id" = "uf"."user_id" 
+            JOIN "users" "u2" ON "uf"."friend_id" = "u2"."id" WHERE "u1"."id"=$1 AND "u2"."is_online"=$2"#
+            , [Uuid::parse_str(&payload.user_id).unwrap().into() , true.into()])
     )
-    .filter(
-        Condition::all()
-            .add(users::Column::Id.eq(payload.user_id))
-            .add(users_friends::Column::FriendId.is_not_null())
-            .add(users::Column::IsOnline.eq(true)),
-    ).all(&state.conn).await;
+  
+    .all(&state.conn).await;
         
     if result.is_err() {
+        println!("The error while getting online friends is: {:?}", result.as_ref().err());
+        println!("Error Is: {:?}", result.unwrap_err());
         return Err(Error::ErrorWhileFetchingUserFriends)
     }
 
