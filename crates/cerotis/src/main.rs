@@ -5,16 +5,16 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
+use mongodb::bson::{self, doc};
 use mqtt_events::all_mqtt_events::{send_game_general_event_mqtt, send_game_invite_room_event_mqtt, send_game_move_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_status_room_event_mqtt};
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::UserFriendRequestKafkaEvent, ws_events::UserConnectionEventPayload}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
-use sea_orm::{Database, Set};
+use sea_orm::{ColIdx, Database, Set};
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
 use ton::models;
-use models::users;
-use uuid::Uuid;
-use sea_orm::ActiveModelTrait;
+use bson::Uuid as BsonUuid;
+
 
 pub mod kafka;
 pub mod conf;
@@ -48,15 +48,13 @@ async fn main()  {
     
     let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder) , connection);
     
-    let user_and_game_handles = init_user_and_game_kafka_consumer(
-        context,
-        &config, 
-        consumers
-    );
+    // let user_and_game_handles = init_user_and_game_kafka_consumer(
+    //     context,
+    //     &config, 
+    //     consumers
+    // );
 
-    start_web_server(&config.server, vec![
-        user_and_game_handles,
-    ])
+    start_web_server(&config.server, vec![])
     .await;
 
 
@@ -174,6 +172,10 @@ pub async fn do_listen(
     cli: &mqtt::Client
 ) {
 
+    let mongo_db = context.get_mongo_db_client().database("user_game_events_db");
+    let user_collection = mongo_db.collection::<UserGameRelation>("users");
+    let game_collection = mongo_db.collection::<Game>("games");
+    let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
 
     loop {
         match stream_consumer.recv().await {
@@ -181,75 +183,103 @@ pub async fn do_listen(
             Ok(message) => {
  
             let topic = message.topic();
-            if topic.to_string() == topic_name {
+            let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
+
+            match topic {
+                "user_game_deletion" => {
+                    let user_game_deletion_event: UserGameDeletetionEvent = serde_json::from_str(&payload).unwrap();
+                    let _ = user_collection.delete_one(doc! { "user_id": BsonUuid::parse_str(user_game_deletion_event.user_id.clone()).unwrap()}, None).await;
+                    let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id.clone()}, None).await;
+                    let _ = user_turn_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
+                },
+                "user_game_events" => {
+                    let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
+                    
+                    let rsp = game_collection.find_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, None).await;
+                    let rsp_clone = rsp.clone();
+                    // Fix the fen update fn
+                //    if !rsp_clone.is_err() && !rsp_clone.unwrap().is_none() {
+                //     let game_model = rsp.unwrap().unwrap();
+
+                //     let _rsp = if user_game_event_payload.move_type == "normal" {
+                //         let gm_ev: ChessNormalEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
+            
+                //         let old_position: CellPosition = serde_json::from_str(&gm_ev.initial_cell).unwrap();
+                //         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
+                //         let piece: Vec<char> = gm_ev.piece.chars().collect();
                 
-             if let Some(key_name) = message.key() {
-                let key_name_string = String::from_utf8(key_name.to_vec()).unwrap();
-                let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
-                match key_name_string.as_str() {
-                    USER_ONLINE_EVENT => {
-                            change_user_online_status_in_db(&context , payload.clone()).await;
-                           // send_user_online_event_event_mqtt(cli , payload).await
-                    },
+                //         let updated_fen = update_fen(&game_model.current_state, old_position.x, old_position.y, new_position.x, new_position.y, *piece.get(0).unwrap());
 
-                    USER_JOINED_ROOM => {
-                            send_user_joined_room_event_mqtt(cli , payload).await
-                    },
+                //             game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"current_state": updated_fen} }, None).await
+                //     } else {
+                //         let gm_ev: ChessPromotionEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
+                //         let old_position: CellPosition = serde_json::from_str(&gm_ev.initial_cell).unwrap();
+                //         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
+                //         let piece: Vec<char> = gm_ev.piece.chars().collect();
+                //         let updated_fen = update_fen(&game_model.current_state, old_position.x, old_position.y, new_position.x, new_position.y, *piece.get(0).unwrap());
 
-                    USER_LEFT_ROOM => {
-                        send_user_left_room_event_mqtt(cli , payload).await
-                    },
+                //             game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"current_state": updated_fen} }, None).await
+                //     };
 
-                    FRIEND_REQUEST_EVENT => {
-                        send_user_friend_request_event_mqtt(cli , payload).await
-                    },
+                   }
+                   
 
-                    GAME_INVITE_EVENT => {
-                        send_game_invite_room_event_mqtt(cli , payload).await
-                    },
+                   _ => {
+                    println!("No topics found")
+                   }
 
-                    USER_GAME_MOVE => {
-                        send_game_move_event_mqtt(cli , payload).await
-                    },
 
-                    GAME_GENERAL_EVENT => {
-                        send_game_general_event_mqtt(cli , payload).await
-                    },
-
-                    USER_STATUS_EVENT => {
-                        send_user_status_room_event_mqtt(cli , payload).await
-                    },
-
-                    _ => {}
                 }
-             }
-
 
             }
+            // if topic.to_string() == topic_name {
+                
+            //  if let Some(key_name) = message.key() {
+            //     let key_name_string = String::from_utf8(key_name.to_vec()).unwrap();
+            //     let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
+            //     match key_name_string.as_str() {
+            //         USER_ONLINE_EVENT => {
+            //                 change_user_online_status_in_db(&context , payload.clone()).await;
+            //                // send_user_online_event_event_mqtt(cli , payload).await
+            //         },
+
+            //         USER_JOINED_ROOM => {
+            //                 send_user_joined_room_event_mqtt(cli , payload).await
+            //         },
+
+            //         USER_LEFT_ROOM => {
+            //             send_user_left_room_event_mqtt(cli , payload).await
+            //         },
+
+            //         FRIEND_REQUEST_EVENT => {
+            //             send_user_friend_request_event_mqtt(cli , payload).await
+            //         },
+
+            //         GAME_INVITE_EVENT => {
+            //             send_game_invite_room_event_mqtt(cli , payload).await
+            //         },
+
+            //         USER_GAME_MOVE => {
+            //             send_game_move_event_mqtt(cli , payload).await
+            //         },
+
+            //         GAME_GENERAL_EVENT => {
+            //             send_game_general_event_mqtt(cli , payload).await
+            //         },
+
+            //         USER_STATUS_EVENT => {
+            //             send_user_status_room_event_mqtt(cli , payload).await
+            //         },
+
+            //         _ => {}
+            //     }
+            //  }
+
+
+            // }
 
                 
-            }
         }
-    }
+        }
 }
 
-
-pub async fn change_user_online_status_in_db(context: &DynContext , user_online_payload: String) {
-    // let user_payload: UserConnectionEventPayload = serde_json::from_str(&user_online_payload).unwrap();
-    // let db_connection = context.get_postgres_db_client();
-
-
-    // let user = users::Entity::find_by_id(Uuid::parse_str(&user_payload.user_id).unwrap()).one(&db_connection).await.unwrap();
-    // let mut user_model: users::ActiveModel = user.unwrap().into();
-    // user_model.is_online = Set(true);
-
-
-    // let res = user_model.update(&db_connection).await;
-
-    // if res.is_err() {
-    //  println!("Error while changed user online status. Error occurred={:?}" , res.err().unwrap());
-    // } else {
-    //     println!("Successfully updated user is_online status for user_id={:?}" , user_payload.user_id);
-    // }
-
-}

@@ -21,16 +21,16 @@ kafka:
   broker:
     urls: localhost:9092
   consumer:
-    - id: user
+    - id: user_game_deletion
       topic:
-        - user
-      client_id: user.client.id
-      group_id: user.group.id
-    - id: game
+        - user_game_deletion
+      client_id: user.game.deletion.client.id
+      group_id: user.game.deletion.group.id
+    - id: user_game_events
       topic:
-        - game
-      client_id: game.client.id
-      group_id: game.group.id
+        - user_game_events
+      client_id: user_game_events.client.id
+      group_id: user_game_events.group.id
   producer:
     client_id:  cerotis
     transactional_id: cerotis-transactions

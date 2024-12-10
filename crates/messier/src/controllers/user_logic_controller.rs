@@ -1,10 +1,15 @@
-use std::str::FromStr;
+use std::collections::HashMap;
+use std::{collections::HashSet, str::FromStr};
 
 use crate::event_producer::user_events_producer::send_event_for_user_topic;
 use crate::errors::Error;
 use crate::errors;
 use argon2::{self, Config};
-use orion::constants::FRIEND_REQUEST_EVENT;
+use bson::{doc, Uuid as BsonUuid};
+use futures::TryStreamExt;
+use orion::constants::{MONGO_DB_NAME, MONGO_GAMES_MODEL, MONGO_USERS_MODEL};
+use orion::models::game_model::Game;
+use orion::{constants::FRIEND_REQUEST_EVENT, models::user_game_relation_model::UserGameRelation};
 use orion::events::kafka_event::UserFriendRequestKafkaEvent;
 use ton::models::{self, users, users_wallet_keys};
 use crate::state::AppDBState;
@@ -20,7 +25,7 @@ use serde_json::Value;
 use uuid::Uuid;
 use sea_orm::ColumnTrait;
 
-use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, ChangeUserPasswordPayload, ChangeUserUsernamePayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, SendRequestPayload};
+use super::payloads::{AcceptOrRejectRequestPayload, AddWalletAddressPayload, ChangeUserPasswordPayload, ChangeUserUsernamePayload, DeleteWalletAddressPayload, GetFriendsRequestPayload, GetOnlineFriendsPayload, GetOnlineFriendsResponseModel, GetUserWalletPayload, GetUsersOngoingGamesPayload, GetUsersOngoingGamesResponseModel, SendRequestPayload};
 
 pub async fn send_request(
     state: State<AppDBState>,
@@ -259,6 +264,90 @@ pub async fn delete_wallet_address(
 
      Ok(body)
 }
+
+
+pub async fn get_ongoing_games_for_user(
+    state: State<AppDBState>,
+    payload: Json<GetUsersOngoingGamesPayload>
+) -> APIResult<Json<Value>> {
+    if  payload.user_id == "" {
+        return Err(Error::MissingParamsError)
+    }
+
+    let get_user_friends_ids = UsersFriends::find_by_user_id(&Uuid::from_str(&payload.user_id).unwrap()).all(&state.conn).await;
+
+    if get_user_friends_ids.is_err() {
+        return Err(Error::ErrorWhileFetchingUserFriends)
+    }
+
+    let get_user_friends_ids_vec = get_user_friends_ids.unwrap();
+    let mut game_sets: HashSet<String> = HashSet::new();
+    let mut game_id_gamemodel: HashMap<String, GetUsersOngoingGamesResponseModel> = HashMap::new();
+    //Database name will change 
+    let mongo_db = state.context.get_mongo_db_client().database(MONGO_DB_NAME);
+
+    let user_collection = mongo_db.collection::<UserGameRelation>(MONGO_USERS_MODEL);
+    let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
+    let mut game_vec_results: Vec<GetUsersOngoingGamesResponseModel> = vec![];
+    for user_model in get_user_friends_ids_vec.iter() {
+        let usr_model = user_model.clone().try_into_model().unwrap();
+        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(usr_model.friend_id.to_string()).unwrap() }, None).await;
+      
+        if cursor.is_err() {
+            continue;
+        }
+        let res: Vec<UserGameRelation> = cursor.unwrap().try_collect().await.unwrap();
+
+        if res.len() == 0 {
+            continue;
+        }
+        let user_game_rel = res.get(0);
+        if user_game_rel.is_none() {
+            continue;
+        }
+
+        let user_game_rel_model = user_game_rel.unwrap();
+      
+        let game_id = &user_game_rel_model.game_id.clone();
+            if !game_sets.contains(game_id) {
+                game_sets.insert(game_id.to_string());
+                let game_cursor = game_collection.find(doc! { "id": BsonUuid::parse_str(game_id).unwrap() }, None).await.unwrap();
+                let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
+                let new_game_res = game_res.get(0).unwrap();
+                let new_game = GetUsersOngoingGamesResponseModel {
+                    game_id: new_game_res.id,
+                    game_type: new_game_res.game_type.clone(),
+                    is_staked: new_game_res.is_staked,
+                    total_money_staked: 0.0,
+                    usernames_playing: vec![user_game_rel_model.username.clone()],
+                };
+                game_id_gamemodel.insert(game_id.clone(),  new_game);
+            } else {
+                 let game_model = game_id_gamemodel.get_mut(game_id).unwrap();
+                 game_model.usernames_playing.push(user_game_rel_model.username.clone())
+            }
+            
+        
+
+    }
+
+    for (_,value ) in game_id_gamemodel {
+        game_vec_results.push(value);
+    }
+
+    
+
+    let body = Json(json!({
+		"result": {
+			"success": true,
+		},
+        "games": game_vec_results
+	}));
+
+	Ok(body)
+
+}
+
 
 
 pub async fn get_user_online_friends(

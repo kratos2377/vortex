@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["crates/messier", "crates/cerotis", "crates/ton", "crates/migration", "crates/saggitarius", "crates/orion", "crates/helix", "crates/nebula"]
+members = ["crates/messier", "crates/cerotis", "crates/ton", "crates/migration", "crates/orion",  "crates/nebula"]

@@ -15,6 +15,7 @@ pub fn create_user_logic_routes() -> Router<AppDBState> {
     .route("/get_user_online_friends", get(controllers::user_logic_controller::get_user_online_friends))
     .route("/change_user_password", put(controllers::user_logic_controller::change_user_password))
     .route("/change_user_username", put(controllers::user_logic_controller::change_user_username))
+    .route("/get_ongoing_games_for_user", get(controllers::user_logic_controller::get_ongoing_games_for_user))
     .route_layer(middleware::from_fn(utils::middleware::guard))
 
 }
