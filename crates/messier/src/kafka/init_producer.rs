@@ -21,7 +21,7 @@ pub fn create_new_kafka_producer(config: &KafkaConfiguration) -> Result<FuturePr
         // Period of time in milliseconds after which we force a refresh of metadata even if we
         // haven't seen any partition leadership changes
         .set("metadata.max.age.ms", "10000")
-        .set("linger.ms", "10") // Wait 10ms to group sending messages
+        .set("linger.ms", "1000") // Wait 10ms to group sending messages
         .set("transactional.id", config.producer.transactional_id.clone() + "-" + nan_id_gen.clone().as_str())
         .set("queue.buffering.max.ms", "100") // Buffer messages 100ms
         .set("request.required.acks", "all") // Wait for acknowledge from broker

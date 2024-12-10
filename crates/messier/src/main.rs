@@ -53,11 +53,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
     let user_auth_routes = routes::user_auth_routes::create_user_routes() ;
     let user_logic_routes = routes::user_logic_routes::create_user_logic_routes();
-   // let game_routes = routes::game_logic_routes::create_game_routes();
+    let game_routes = routes::game_logic_routes::create_game_routes();
     let routes_all = Router::new()
                             .nest( "/api/v1/auth", user_auth_routes)
                             .nest("/api/v1/user", user_logic_routes)
-                            // .nest( "/api/v1/game", game_routes)
+                            .nest( "/api/v1/game", game_routes)
                             .layer(ServiceBuilder::new()
                                     .layer(CookieManagerLayer::new())
                                     .layer(CorsLayer::permissive()))
