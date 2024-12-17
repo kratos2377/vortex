@@ -12,13 +12,14 @@ pub struct Game {
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
     pub id: Uuid,
     pub user_count: i64,
-    pub host_id: String,
+    pub host_id: Option<String>,
     pub name: String,
     pub game_type: String,
     pub is_staked: bool,
     pub current_state: String,
+    pub is_match: bool,
     pub state_index: i64,
-    // Description contains the status of game -> LOBBY or IN_PROGRESS
+    // Description contains the status of game -> LOBBY or IN_PROGRESS or INIT_STATE (only possible if its a match between users)
     pub description: String,
     pub staked_money_state: Option<StakedUsers>,
     pub poker_state: Option<PokerState>, 

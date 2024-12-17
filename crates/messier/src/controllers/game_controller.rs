@@ -52,10 +52,11 @@ pub async fn create_lobby(
     let mut game_doc = Game {
         id: game_id,
         user_count: 1,
-        host_id: payload.user_id.clone(),
+        host_id: Some(payload.user_id.clone()),
         name: payload.game_name.clone(),
         game_type: payload.game_name.clone(),
         is_staked: payload.game_type == "staked",
+        is_match: false,
         current_state: "none".to_string(),
         state_index: 0,
         description: "LOBBY".to_string(),
