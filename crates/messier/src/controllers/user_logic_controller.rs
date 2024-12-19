@@ -318,6 +318,7 @@ pub async fn get_ongoing_games_for_user(
                     game_id: new_game_res.id,
                     game_type: new_game_res.game_type.clone(),
                     is_staked: new_game_res.is_staked,
+                    is_match: new_game_res.is_match,
                     total_money_staked: 0.0,
                     usernames_playing: vec![user_game_rel_model.username.clone()],
                 };

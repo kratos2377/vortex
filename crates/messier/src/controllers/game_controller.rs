@@ -57,7 +57,7 @@ pub async fn create_lobby(
         game_type: payload.game_name.clone(),
         is_staked: payload.game_type == "staked",
         is_match: false,
-        current_state: "none".to_string(),
+        chess_state: "none".to_string(),
         state_index: 0,
         description: "LOBBY".to_string(),
         staked_money_state: None,
@@ -67,7 +67,7 @@ pub async fn create_lobby(
     };
 
     if payload.game_name == "chess" {
-        game_doc.current_state = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string();
+        game_doc.chess_state = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string();
     }
 
     let user_turn_mapping_doc = UserTurnMapping {
@@ -349,10 +349,10 @@ pub async fn get_current_state_of_game(
 
 
     let game_current_state = if game_res.name == "chess" {
-        &game_res.current_state
+        &game_res.chess_state
     } else {
         // Change this to poker state later
-        &game_res.current_state
+        &game_res.chess_state
     };
 
 

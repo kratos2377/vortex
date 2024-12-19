@@ -220,6 +220,7 @@ pub struct GetUsersOngoingGamesResponseModel {
    pub game_type: String,
    pub is_staked: bool,
    pub total_money_staked: f64,
+   pub is_match: bool,
    pub usernames_playing: Vec<String>
 }
 

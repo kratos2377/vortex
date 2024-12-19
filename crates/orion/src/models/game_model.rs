@@ -16,7 +16,7 @@ pub struct Game {
     pub name: String,
     pub game_type: String,
     pub is_staked: bool,
-    pub current_state: String,
+    pub chess_state: String,
     pub is_match: bool,
     pub state_index: i64,
     // Description contains the status of game -> LOBBY or IN_PROGRESS or INIT_STATE (only possible if its a match between users)
