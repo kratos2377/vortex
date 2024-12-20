@@ -48,11 +48,11 @@ async fn main()  {
     
     let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder) , connection);
     
-    // let user_and_game_handles = init_user_and_game_kafka_consumer(
-    //     context,
-    //     &config, 
-    //     consumers
-    // );
+    let user_and_game_handles = init_user_and_game_kafka_consumer(
+        context,
+        &config, 
+        consumers
+    );
 
     start_web_server(&config.server, vec![])
     .await;
