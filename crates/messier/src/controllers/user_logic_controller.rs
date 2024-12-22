@@ -308,8 +308,6 @@ pub async fn get_ongoing_games_for_user(
 
         let user_game_rel_model = user_game_rel.unwrap();
 
-        println!("Usergame relation vec is");
-        println!("{:?}" , user_game_rel_model.game_id);
       
         let game_id = &user_game_rel_model.game_id.clone();
             if !game_sets.contains(game_id) {
@@ -329,6 +327,7 @@ pub async fn get_ongoing_games_for_user(
                 let new_game = GetUsersOngoingGamesResponseModel {
                     game_id: new_game_res_model.id,
                     game_type: new_game_res_model.game_type.clone(),
+                    game_name: new_game_res_model.name.clone(),
                     is_staked: new_game_res_model.is_staked,
                     is_match: new_game_res_model.is_match,
                     total_money_staked: 0.0,

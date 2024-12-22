@@ -218,6 +218,7 @@ pub struct GetUsersOngoingGamesPayload {
 pub struct GetUsersOngoingGamesResponseModel {
    pub game_id: Uuid,
    pub game_type: String,
+   pub game_name: String,
    pub is_staked: bool,
    pub total_money_staked: f64,
    pub is_match: bool,
