@@ -1,0 +1,15 @@
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: app_kafka_connector_mongodb
+        level: debug
+      - namespace: app_kafka_connector_mongodb::event
+        level: trace
+      - namespace: common_error
+        level: trace
+      - namespace: tower_http
+        level: debug
+
+server:
+  port: 3006

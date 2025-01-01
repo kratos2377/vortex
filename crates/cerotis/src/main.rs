@@ -54,7 +54,7 @@ async fn main()  {
         consumers
     );
 
-    start_web_server(&config.server, vec![])
+    start_web_server(&config.server, vec![user_and_game_handles])
     .await;
 
 
@@ -189,8 +189,8 @@ pub async fn do_listen(
                 "user_game_deletion" => {
                     let user_game_deletion_event: UserGameDeletetionEvent = serde_json::from_str(&payload).unwrap();
                     let _ = user_collection.delete_one(doc! { "user_id": BsonUuid::parse_str(user_game_deletion_event.user_id.clone()).unwrap()}, None).await;
-                    let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id.clone()}, None).await;
-                    let _ = user_turn_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
+                    let _ = game_collection.delete_one(doc! { "id": user_game_deletion_event.game_id.clone()}, None).await;
+                    let _ = user_turn_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
                 },
                 "user_game_events" => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
