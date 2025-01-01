@@ -21,8 +21,8 @@ pub struct Game {
     pub state_index: i64,
     // Description contains the status of game -> LOBBY or IN_PROGRESS or INIT_STATE (only possible if its a match between users)
     pub description: String,
-    pub staked_money_state: Option<StakedUsers>,
-    pub poker_state: Option<PokerState>, 
+    pub staked_money_state: Option<String>,
+    pub poker_state: Option<String>, 
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }

@@ -281,6 +281,7 @@ pub async fn get_ongoing_games_for_user(
     }
 
     let get_user_friends_ids_vec = get_user_friends_ids.unwrap();
+
     let mut game_sets: HashSet<String> = HashSet::new();
     let mut game_id_gamemodel: HashMap<String, GetUsersOngoingGamesResponseModel> = HashMap::new();
     //Database name will change 
@@ -290,13 +291,12 @@ pub async fn get_ongoing_games_for_user(
     let game_collection = mongo_db.collection::<Game>(MONGO_GAMES_MODEL);
     let mut game_vec_results: Vec<GetUsersOngoingGamesResponseModel> = vec![];
     for user_model in get_user_friends_ids_vec.iter() {
-        let usr_model = user_model.clone().try_into_model().unwrap();
-        let cursor = user_collection.find(doc! { "user_id": BsonUuid::parse_str(usr_model.friend_id.to_string()).unwrap() }, None).await;
+
+        let cursor = user_collection.find(doc! { "user_id": user_model.clone().friend_id.to_string() }, None).await.unwrap();
       
-        if cursor.is_err() {
-            continue;
-        }
-        let res: Vec<UserGameRelation> = cursor.unwrap().try_collect().await.unwrap();
+
+
+        let res: Vec<UserGameRelation> = cursor.try_collect().await.unwrap();
 
         if res.len() == 0 {
             continue;
@@ -307,18 +307,29 @@ pub async fn get_ongoing_games_for_user(
         }
 
         let user_game_rel_model = user_game_rel.unwrap();
+
       
         let game_id = &user_game_rel_model.game_id.clone();
             if !game_sets.contains(game_id) {
                 game_sets.insert(game_id.to_string());
-                let game_cursor = game_collection.find(doc! { "id": BsonUuid::parse_str(game_id).unwrap() }, None).await.unwrap();
-                let game_res: Vec<Game> = game_cursor.try_collect().await.unwrap();
-                let new_game_res = game_res.get(0).unwrap();
+                let game_cursor = game_collection.find(doc! { "id": game_id }, None).await.unwrap();
+                let game_res_future = game_cursor.try_collect().await;
+                if game_res_future.is_err() {
+                    continue;
+                }
+
+                let game_res: Vec<Game> = game_res_future.unwrap();
+                let new_game_res = game_res.get(0);
+                if(new_game_res.is_none()) {
+                    continue;
+                }
+                let new_game_res_model = new_game_res.unwrap();
                 let new_game = GetUsersOngoingGamesResponseModel {
-                    game_id: new_game_res.id,
-                    game_type: new_game_res.game_type.clone(),
-                    is_staked: new_game_res.is_staked,
-                    is_match: new_game_res.is_match,
+                    game_id: new_game_res_model.id,
+                    game_type: new_game_res_model.game_type.clone(),
+                    game_name: new_game_res_model.name.clone(),
+                    is_staked: new_game_res_model.is_staked,
+                    is_match: new_game_res_model.is_match,
                     total_money_staked: 0.0,
                     usernames_playing: vec![user_game_rel_model.username.clone()],
                 };
