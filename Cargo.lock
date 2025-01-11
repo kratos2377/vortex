@@ -1713,6 +1713,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperion"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-macros",
+ "bson",
+ "chrono",
+ "config",
+ "dotenv",
+ "futures",
+ "futures-util",
+ "jsonwebtoken",
+ "lazy-regex",
+ "lazy_static",
+ "lettre",
+ "migration",
+ "mongodb",
+ "murmur3",
+ "nano-id",
+ "opentelemetry",
+ "orion",
+ "rand",
+ "rdkafka",
+ "redis 0.24.0",
+ "rust-argon2",
+ "schema_registry_converter",
+ "sea-orm",
+ "serde",
+ "serde_bytes",
+ "serde_derive",
+ "serde_json",
+ "serde_with 3.11.0",
+ "strum_macros 0.25.3",
+ "tokio",
+ "ton",
+ "tower 0.4.13",
+ "tower-cookies",
+ "tower-http",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"

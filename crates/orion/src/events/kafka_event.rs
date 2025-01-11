@@ -43,7 +43,8 @@ pub struct UserGameInviteKafkaEvent {
 
 #[derive(Clone , Serialize , Deserialize)]
 pub struct UserGameDeletetionEvent {
-    pub user_id: String
+    pub user_id: String,
+    pub game_id: String,
 }
 
 

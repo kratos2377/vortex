@@ -54,7 +54,7 @@ async fn main()  {
         consumers
     );
 
-    start_web_server(&config.server, vec![])
+    start_web_server(&config.server, vec![user_and_game_handles])
     .await;
 
 

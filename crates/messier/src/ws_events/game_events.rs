@@ -175,7 +175,7 @@ pub async fn remove_key_from_redis(redis_client: Arc<Mutex<Connection>> , key: S
 
 // The User-Game-Deletion event will delete events from mongo db
 pub async fn produce_user_game_deletion_kafka_event(producer: &FutureProducer, user_id: String) -> Result<(), KafkaError> {
-    let deletion_event = UserGameDeletetionEvent{ user_id: user_id };
+    let deletion_event = UserGameDeletetionEvent{ user_id: user_id, game_id: todo!() };
     let kafka_events = vec![ 
         KafkaGeneralEvent {
             topic: "user_game_deletion".to_string(),
