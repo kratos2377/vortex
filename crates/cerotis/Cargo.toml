@@ -25,7 +25,6 @@ tracing-opentelemetry = "0.23.0"
 apache-avro = "0.16.0"
 schema_registry_converter = { git = "https://github.com/gklijs/schema_registry_converter", branch = "main", features = ["avro"] }
 opentelemetry = "0.22.0"
-paho-mqtt = { version = "0.12.3", features=["vendored-ssl"] }
 sea-orm = {version="0.12.12" , features =[   "sqlx-postgres",
     "runtime-tokio-rustls",
     "macros",

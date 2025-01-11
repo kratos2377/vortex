@@ -20,9 +20,7 @@ pub mod conf;
 pub mod api;
 pub mod context;
 pub mod mongo_pool;
-pub mod avro;
-pub mod mqtt_client;
-pub mod mqtt_events;
+pub mod fen_update;
 
 
 
@@ -209,22 +207,31 @@ pub async fn do_listen(
                         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
                         let piece: Vec<char> = gm_ev.piece.chars().collect();
                 
-                        let updated_fen = update_fen(&game_model.chess_state, old_position.x, old_position.y, new_position.x, new_position.y, *piece.get(0).unwrap());
-                        println!("Updated Fen is: {:?}" , updated_fen);
-                            game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"chess_state": updated_fen} }, None).await
+                        let updated_fen = fen_update::update_fen_with_timing(&game_model.chess_state, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , None );
+
+                        if updated_fen.is_some() {
+                            let updated_fen_rsp = updated_fen.unwrap();
+                           // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
+                            game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"chess_state": updated_fen_rsp.fen } }, None).await;
+                        } 
+
                     } else {
                         let gm_ev: ChessPromotionEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
                         let old_position: CellPosition = serde_json::from_str(&gm_ev.initial_cell).unwrap();
                         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
                         let piece: Vec<char> = gm_ev.piece.chars().collect();
-                        let updated_fen = update_fen(&game_model.chess_state, old_position.x, old_position.y, new_position.x, new_position.y, *piece.get(0).unwrap());
+                        let promoted_to: Vec<char> = gm_ev.promoted_to.chars().collect();
+                        let updated_fen = fen_update::update_fen_with_timing(&game_model.chess_state, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , Some(*piece.get(0).unwrap()) );
 
-                            game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"chess_state": updated_fen} }, None).await
+                        if updated_fen.is_some() {
+                            let updated_fen_rsp = updated_fen.unwrap();
+                           // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
+                            game_collection.update_one(doc! { "id": BsonUuid::parse_str(user_game_event_payload.game_id.clone()).unwrap()}, doc! { "$set": doc! {"chess_state": updated_fen_rsp.fen } }, None).await;
+                        } 
+
                     };
 
-                   } else {
-                    println!("Some error recieved before update: {:?}", rsp.unwrap().is_none())
-                   }
+                   } 
                    
                 }
 
@@ -242,110 +249,23 @@ pub async fn do_listen(
 
 }
 
-pub fn update_fen(fen: &str, initial_rank: i64 , initial_file: i64, target_rank: i64, target_file: i64, piece: char) -> String {
-    let parts: Vec<&str> = fen.split_whitespace().collect();
-    let mut piece_placement = parts[0].to_string();
-    let active_color = parts[1];
-    let mut castling_availability = parts[2].to_string();
-    let mut en_passant_target = parts[3].to_string();
-    let mut halfmove_clock: i32 = parts[4].parse().unwrap();
-    let mut fullmove_number: i32 = parts[5].parse().unwrap();
-    // Convert board to 2D array for easier manipulation
-    let mut board: Vec<Vec<char>> = piece_placement
-        .split('/')
-        .map(|row| {
-            let mut new_row = Vec::new();
-            for ch in row.chars() {
-                if ch.is_digit(10) {
-                    let count = ch.to_digit(10).unwrap();
-                    for _ in 0..count {
-                        new_row.push('1');
-                    }
-                } else {
-                    new_row.push(ch);
-                }
-            }
-            new_row
-        })
-        .collect();
-    let initial_rank = initial_rank;
-    let initial_file = initial_file;
-    let target_rank = target_rank;
-    let target_file = target_file;
-    // Move the piece on the board
-    board[initial_rank as usize][initial_file as usize] = '1';
-    board[target_rank as usize][target_file as usize] = piece;
-    // Reconstruct the piece placement string
-    piece_placement = board
-        .iter()
-        .map(|row| {
-            let mut new_row = String::new();
-            let mut empty_count = 0;
-            for &square in row {
-                if square == '1' {
-                    empty_count += 1;
-                } else {
-                    if empty_count > 0 {
-                        new_row.push_str(&empty_count.to_string());
-                        empty_count = 0;
-                    }
-                    new_row.push(square);
-                }
-            }
-            if empty_count > 0 {
-                new_row.push_str(&empty_count.to_string());
-            }
-            new_row
-        })
-        .collect::<Vec<String>>()
-        .join("/");
-    // Toggle active color
-    let active_color = if active_color == "w" { "b" } else { "w" };
-    // Handle castling rights (simplified version, real implementation needs more detail)
-    if piece.to_ascii_lowercase() == 'k' {
-        if piece == 'K' {
-            castling_availability = castling_availability.replace('K', "").replace('Q', "");
-        } else {
-            castling_availability = castling_availability.replace('k', "").replace('q', "");
-        }
+
+pub fn get_chess_position(cell: &CellPosition) -> String {
+   format!("{}{}" , get_file_letter(cell.x) , (8-cell.y).to_string())
+} 
+
+pub fn get_file_letter(num: i64) -> String {
+
+    match num {
+        0 => "a".to_owned(),
+        1 => "b".to_owned(),
+        2 => "c".to_owned(),
+        3 => "d".to_owned(),
+        4 => "e".to_owned(),
+        5 => "f".to_owned(),
+        6 => "g".to_owned(),
+        7 => "h".to_owned(),
+        _ => "a".to_owned()
     }
-    if initial_rank == 0 && initial_file == 0 || target_rank == 0 && target_file == 0 {
-        castling_availability = castling_availability.replace('Q', "");
-    }
-    if initial_rank == 0 && initial_file == 7 || target_rank == 0 && target_file == 7 {
-        castling_availability = castling_availability.replace('K', "");
-    }
-    if initial_rank == 7 && initial_file == 0 || target_rank == 7 && target_file == 0 {
-        castling_availability = castling_availability.replace('q', "");
-    }
-    if initial_rank == 7 && initial_file == 7 || target_rank == 7 && target_file == 7 {
-        castling_availability = castling_availability.replace('k', "");
-    }
-    if castling_availability.is_empty() {
-        castling_availability = "-".to_string();
-    }
-    // Handle en passant target (simplified, real implementation needs more detail)
-    if piece.to_ascii_lowercase() == 'p' && (initial_rank as i32 - target_rank as i32).abs() == 2 {
-        en_passant_target = format!(
-            "{}{}",
-            (b'a' + target_file as u8) as char,
-            8 - ((initial_rank + target_rank) / 2)
-        );
-    } else {
-        en_passant_target = "-".to_string();
-    }
-    // Update halfmove clock and fullmove number
-    if piece.to_ascii_lowercase() == 'p' || board[target_rank as usize][target_file as usize] != '1' {
-        halfmove_clock = 0;
-    } else {
-        halfmove_clock += 1;
-    }
-    if active_color == "w" {
-        fullmove_number += 1;
-    }
-    // Construct the new FEN string
-    format!(
-        "{} {} {} {} {} {}",
-        piece_placement, active_color, castling_availability, en_passant_target, halfmove_clock, fullmove_number
-    )
+
 }
