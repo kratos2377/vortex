@@ -6,7 +6,6 @@ use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::decoder::AvroRecordDecoder;
 use mongodb::bson::{self, doc};
-use mqtt_events::all_mqtt_events::{send_game_general_event_mqtt, send_game_invite_room_event_mqtt, send_game_move_event_mqtt, send_user_friend_request_event_mqtt, send_user_joined_room_event_mqtt, send_user_left_room_event_mqtt, send_user_status_room_event_mqtt};
 use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
 use sea_orm::{ColIdx, Database, Set};
@@ -26,7 +25,6 @@ pub mod mqtt_client;
 pub mod mqtt_events;
 
 
-extern crate paho_mqtt as mqtt;
 
 #[tokio::main]
 async fn main()  {
@@ -158,10 +156,9 @@ pub fn listen(
 ) -> JoinHandle<()> {
     let topic = key_topic.clone();
 
-    let cli = mqtt_client::create_mqtt_client_for_kafka_consumer(&config.mqtt, topic.clone());
     // Start listener
     tokio::spawn(async move {
-        do_listen( context, &stream_consumer, topic , &cli).await;
+        do_listen( context, &stream_consumer, topic ).await;
     })
 }
 
@@ -169,7 +166,6 @@ pub async fn do_listen(
     context: DynContext,
     stream_consumer: &StreamConsumer,
     topic_name: String,
-    cli: &mqtt::Client
 ) {
 
     let mongo_db = context.get_mongo_db_client().database("user_game_events_db");
