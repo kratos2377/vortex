@@ -3,7 +3,6 @@ use uuid::Uuid;
 
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct UserGameMove {
     pub user_id: String,
     pub game_id: String,
