@@ -63,20 +63,20 @@ fn update_fen(fen: &str, piece: char, from: &str, to: &str, promotion: Option<ch
     let is_white_piece = source_piece.is_uppercase();
     if (state.active_color == 'w' && !is_white_piece) || 
        (state.active_color == 'b' && is_white_piece) {
+        println!("WRONG COLOR ERROR");
         return None; // Wrong color piece for current turn
     }
     
-    // Verify the piece type matches, ignoring case
-    if !is_same_piece_type(source_piece, piece) {
-        return None;
-    }
+
     
     // Handle pawn promotion
     let piece_to_place = if let Some(promoted_piece) = promotion {
         if piece.to_ascii_uppercase() != 'P' {
+            println!("No Pawn error");
             return None; // Only pawns can be promoted
         }
         if to_pos.rank != 0 && to_pos.rank != 7 {
+            println!("Invalid Promo ERrror");
             return None; // Promotion only on first/last rank
         }
         // Set the correct case for the promoted piece based on the moving piece's color
@@ -148,10 +148,7 @@ fn update_fen(fen: &str, piece: char, from: &str, to: &str, promotion: Option<ch
     Some(state_to_fen(&state))
 }
 
-// New function to check piece type regardless of case
-fn is_same_piece_type(board_piece: char, input_piece: char) -> bool {
-    board_piece.to_ascii_uppercase() == input_piece.to_ascii_uppercase()
-}
+
 
 // [Previous helper functions remain the same]
 fn parse_complete_fen(fen: &str) -> Option<ChessState> {
