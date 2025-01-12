@@ -4,7 +4,6 @@ use api::health;
 use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
-use kafka::decoder::AvroRecordDecoder;
 use mongodb::bson::{self, doc};
 use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
@@ -30,7 +29,6 @@ async fn main()  {
 
     let consumers = kafka::consumer::init_consumers(&config.kafka).unwrap();
     
-    let avro_decoder = AvroRecordDecoder::new(&config.kafka).unwrap();
     
     let connection = match Database::connect(config.postgres_url.url.clone()).await {
         Ok(connection) => connection,
@@ -42,7 +40,7 @@ async fn main()  {
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
     
     
-    let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)), Arc::new(avro_decoder) , connection);
+    let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)) , connection);
     
     let user_and_game_handles = init_user_and_game_kafka_consumer(
         context,

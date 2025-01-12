@@ -4,14 +4,12 @@ use mongodb::Client;
 use redis::Connection;
 use sea_orm::DatabaseConnection;
 
-use crate::kafka::decoder::RecordDecoder;
 
 
 
 pub type DynContext = Arc<dyn Context>;
 
 pub trait Context: Sync + Send {
-    fn get_avro_decoder(&self) -> Arc<dyn RecordDecoder>;
     fn get_mongo_db_client(&self) -> Arc<Client>;
     fn get_redis_db_client(&self) -> Arc<Mutex<Connection>>;
     fn get_postgres_db_client(&self) -> DatabaseConnection;
@@ -21,7 +19,6 @@ pub trait Context: Sync + Send {
 pub struct ContextImpl {
     pub mongo_db_client: Arc<Client>,
     pub redis_db_client: Arc<Mutex<Connection>>,
-    pub avro_decoder: Arc<dyn RecordDecoder>,
     pub postgres_db_client: DatabaseConnection,
 }
 
@@ -29,13 +26,11 @@ impl ContextImpl {
     pub fn new_dyn_context(
         mongo_db_client: Arc<Client>,
         redis_db_client: Arc<Mutex<Connection>>,
-        avro_decoder: Arc<dyn RecordDecoder>,
         postgres_db_client: DatabaseConnection,
     ) -> DynContext {
         let context = ContextImpl {
             mongo_db_client: mongo_db_client,
             redis_db_client: redis_db_client,
-            avro_decoder: avro_decoder,
             postgres_db_client: postgres_db_client
         };
         let context: DynContext = Arc::new(context);
@@ -54,9 +49,7 @@ impl Context for ContextImpl {
     }
 
     
-    fn get_avro_decoder(&self) -> Arc<dyn RecordDecoder> {
-        self.avro_decoder.clone()
-    }
+
     
     fn get_postgres_db_client(&self) -> DatabaseConnection {
         self.postgres_db_client.clone()

@@ -17,7 +17,6 @@ pub mod common;
 pub mod state;
 pub mod constants;
 pub mod context;
-pub mod ws_events;
 pub mod utils;
 pub mod conf;
 pub mod event_producer;

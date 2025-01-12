@@ -12,9 +12,3 @@ pub struct AppDBState {
     pub context: DynContext
 }
 
-
-#[derive(Clone)]
-pub struct WebSocketStates {
-    pub producer: FutureProducer,
-    pub context: DynContext
-}
