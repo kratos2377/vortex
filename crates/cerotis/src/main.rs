@@ -179,16 +179,16 @@ pub async fn do_listen(
 
             match topic {
                 "user_game_deletion" => {
+                    println!("GAME DELETION EVENT RECIEVED");
+                    println!("{:?}" , payload.clone());
                     let user_game_deletion_event: UserGameDeletetionEvent = serde_json::from_str(&payload).unwrap();
+                    println!("{:?}" , user_game_deletion_event);
                     let _ = user_collection.delete_one(doc! { "user_id": user_game_deletion_event.user_id.clone()}, None).await;
                     let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id.clone()}, None).await;
                     let _ = user_turn_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
                 },
                 "user_game_events" => {
-                    println!("User Game Events Recieved");
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
-
-                        println!("GAME_ID is: {:?}" , user_game_event_payload.game_id.clone());
 
                     // Instead of getting current state from mongo keep it in redis or in elixir process
                     let rsp = game_collection.find_one(doc! { "id": user_game_event_payload.game_id.clone()}, None).await;
@@ -210,12 +210,10 @@ pub async fn do_listen(
                         if updated_fen.is_some() {
                             let updated_fen_rsp = updated_fen.unwrap();
                            // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
-                           println!("AAGYE BABYYYYY. FEN UPDATE IS: {:?}" , updated_fen_rsp.fen.clone());
-                            let mem_rsp = game_collection.update_one(doc! { "id": user_game_event_payload.game_id.clone()}, doc! { "$set": doc! {"chess_state": updated_fen_rsp.fen } }, None).await;
+                      
+                            let _ = game_collection.update_one(doc! { "id": user_game_event_payload.game_id.clone()}, doc! { "$set": doc! {"chess_state": updated_fen_rsp.fen } }, None).await;
                         
-                            if(mem_rsp.is_err()) {
-                                println!("Error while updating is: {:?}" , mem_rsp.err());
-                            } 
+                          
                         
                         }  else {
                             println!("UPDATE RESULT IS NONE");
@@ -227,8 +225,6 @@ pub async fn do_listen(
                         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
                         let piece: Vec<char> = gm_ev.piece.chars().collect();
                         let promoted_to: Vec<char> = gm_ev.promoted_to.chars().collect();
-                        println!("PROMOTION EVENT RECIVED");
-                        println!("{:?}" , gm_ev);
                         let updated_fen = fen_update::update_fen_with_timing(&game_model.chess_state, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , Some(*promoted_to.get(0).unwrap()) );
 
                         if updated_fen.is_some() {
