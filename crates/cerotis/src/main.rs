@@ -179,13 +179,13 @@ pub async fn do_listen(
 
             match topic {
                 "user_game_deletion" => {
-                    println!("GAME DELETION EVENT RECIEVED");
-                    println!("{:?}" , payload.clone());
-                    let user_game_deletion_event: UserGameDeletetionEvent = serde_json::from_str(&payload).unwrap();
-                    println!("{:?}" , user_game_deletion_event);
-                    let _ = user_collection.delete_one(doc! { "user_id": user_game_deletion_event.user_id.clone()}, None).await;
-                    let _ = game_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id.clone()}, None).await;
-                    let _ = user_turn_collection.delete_one(doc! { "host_id": user_game_deletion_event.user_id}, None).await;
+                    let user_game_deletion_event_res = serde_json::from_str(&payload);
+                  if(user_game_deletion_event_res.is_ok()) {
+                    let user_game_deletion_event: UserGameDeletetionEvent = user_game_deletion_event_res.unwrap();
+                    let _ = user_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id.clone()}, None).await;
+                    let _ = game_collection.delete_one(doc! { "id": user_game_deletion_event.game_id.clone()}, None).await;
+                    let _ = user_turn_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
+                  }
                 },
                 "user_game_events" => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
