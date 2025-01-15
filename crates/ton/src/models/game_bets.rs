@@ -9,9 +9,13 @@ pub struct Model {
     pub id: Uuid,
     pub user_id: Uuid,
     pub game_id: Uuid,
+    pub user_id_betting_on: Uuid,
+    pub session_id: String,
     pub game_name: String,
     pub bet_amount: f64,
     pub status: String,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 

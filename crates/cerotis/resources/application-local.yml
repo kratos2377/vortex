@@ -31,6 +31,11 @@ kafka:
         - user_game_events
       client_id: user_game_events.client.id
       group_id: user_game_events.group.id
+    - id: user_score_update
+      topic:
+        - user_score_update
+      client_id: user_score_update.client.id
+      group_id: user_score_update.group.id
   producer:
     client_id:  cerotis
     transactional_id: cerotis-transactions
@@ -44,15 +49,3 @@ kafka:
       - id: game
         topic_name: game
         partitions: 2
-
-mqtt:
-  dflt_broker: "tcp://127.0.0.1:1883"
-  dflt_client: "event_subscriptions_"
-  dflt_topic_user:
-    - "user_events/+"
-  dflt_qos_user:
-    - 0
-  dflt_topic_game:
-    - "game_events/+"
-  dflt_qos_game:
-    - 1

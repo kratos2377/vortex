@@ -84,14 +84,3 @@ pub struct PostgresDatabaseUrl {
 pub struct RedisDBUrl {
     pub url: String,
 }
-
-#[derive(Debug, Deserialize, Clone )]
-#[allow(unused)]
-pub struct MQTTConfiguration {
-    pub dflt_broker: String,
-    pub dflt_client: String,
-    pub dflt_topic_user: Vec<String>,
-    pub dflt_qos_user: Vec<i32>,
-    pub dflt_topic_game: Vec<String>,
-    pub dflt_qos_game: Vec<i32>
-}

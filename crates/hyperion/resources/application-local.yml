@@ -51,18 +51,6 @@ kafka:
         topic_name: user_game_deletion
         partitions: 2
 
-mqtt:
-  dflt_broker: "tcp://127.0.0.1:1883"
-  dflt_client: "event_subscriptions_"
-  dflt_topic_user:
-    - "user_events/+"
-  dflt_qos_user:
-    - 0
-  dflt_topic_game:
-    - "game_events/+"
-  dflt_qos_game:
-    - 1
-
 email_config:
   smtp_key: xsmtpsib-bab861626683efa1e7004721c9ab4b7dacb02047d0baf8e7ac597ac3948a5d82-RqtyNxzMn0v745TI
   from_email: shobityadav23@gmail.com

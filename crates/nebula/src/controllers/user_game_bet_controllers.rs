@@ -3,9 +3,10 @@ use std::str::FromStr;
 use crate::{errors::{self, Error}, state::AppDBState};
 
 use axum::{extract::{State, Query}, Json};
+use chrono::Utc;
 use errors::Result as APIResult;
 use mongodb::bson::{self, doc, DateTime};
-use orion::models::game_model::Game;
+use orion::models::{game_bet_events::GameBetStatus, game_model::Game};
 use sea_orm::{QuerySelect, Set};
 use serde_json::{json, Value};
 use ton::models::game_bets;
@@ -62,7 +63,7 @@ pub async fn place_user_bet(
     state: State<AppDBState>,
     payload: Json<PlaceUserBetPayload>
 ) -> APIResult<Json<Value>> {
-    if payload.user_id == "" || payload.game_id == "" || payload.game_name == "" {
+    if payload.user_id == "" || payload.game_id == "" || payload.game_name == "" || payload.session_id == "" || payload.user_id_betting_on == "" {
         return Err(Error::MissingParams)
     }
 
@@ -104,7 +105,11 @@ pub async fn place_user_bet(
         game_id: Set(Uuid::parse_str(&payload.game_id).unwrap()),
         game_name: Set(payload.game_name.clone()),
         bet_amount: Set(payload.bet_amount),
-        status: Set("in-progress".to_string()),
+        status: Set(GameBetStatus::InProgress.to_string()),
+        session_id: Set(payload.session_id.clone()),
+        created_at: Set(Utc::now().naive_utc()),
+        updated_at: Set(Utc::now().naive_utc()),
+        user_id_betting_on: Set(Uuid::parse_str(&payload.user_id_betting_on).unwrap()),
     };
     
     

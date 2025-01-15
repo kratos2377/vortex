@@ -7,6 +7,8 @@ pub struct PlaceUserBetPayload {
 pub user_id: String,
 pub game_id: String,
 pub game_name: String,
+pub session_id: String,
+pub user_id_betting_on: String,
 pub bet_amount: f64
 }
 

@@ -4,6 +4,7 @@ mod m20220101_000001_create_table;
 mod m20240520_200614_add_table_in_friend_requests;
 mod m20241119_200327_add_isonline_column;
 mod m20241123_171604_game_bets;
+mod m20250114_171855_create_session_in_game_bet;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240520_200614_add_table_in_friend_requests::Migration),
             Box::new(m20241119_200327_add_isonline_column::Migration),
             Box::new(m20241123_171604_game_bets::Migration),
+            Box::new(m20250114_171855_create_session_in_game_bet::Migration),
         ]
     }
 }

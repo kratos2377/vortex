@@ -1,18 +1,19 @@
-use std::{collections::HashMap, net::SocketAddr, sync::{Arc, Mutex}};
+use std::{collections::HashMap, net::SocketAddr, str::FromStr, sync::{Arc, Mutex}};
 
 use api::health;
 use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_turn_model::UserTurnMapping}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
-use sea_orm::{ColIdx, Database, Set};
+use sea_orm::{prelude::Expr, ColIdx, Database, EntityTrait, QueryFilter, Set};
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
-use ton::models;
+use ton::models::{self, users};
 use bson::Uuid as BsonUuid;
-
+use uuid::Uuid;
+use sea_orm::ColumnTrait;
 
 pub mod kafka;
 pub mod conf;
@@ -169,6 +170,8 @@ pub async fn do_listen(
     let game_collection = mongo_db.collection::<Game>("games");
     let user_turn_collection = mongo_db.collection::<UserTurnMapping>("user_turns");
 
+    let postgres_conn = context.get_postgres_db_client();
+
     loop {
         match stream_consumer.recv().await {
             Err(e) => warn!("Error: {}", e),
@@ -186,6 +189,18 @@ pub async fn do_listen(
                     let _ = game_collection.delete_one(doc! { "id": user_game_deletion_event.game_id.clone()}, None).await;
                     let _ = user_turn_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
                   }
+                },
+                "user_score_update" => {
+                    let user_score_update_event_payload = serde_json::from_str(&payload);
+
+                    if user_score_update_event_payload.is_ok() {
+                        let user_score_model_res: UserScoreUpdateEvent = user_score_update_event_payload.unwrap();
+                        let _ = users::Entity::update_many().col_expr(users::Column::Score, Expr::val(user_score_model_res.score).into())
+                                .filter(users::Column::Id.eq(Uuid::from_str(&user_score_model_res.user_id).unwrap()))
+                                .exec(&postgres_conn)
+                                .await;
+                    }
+
                 },
                 "user_game_events" => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
