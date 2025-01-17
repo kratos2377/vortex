@@ -668,6 +668,7 @@ version = "0.1.0"
 dependencies = [
  "apache-avro 0.16.0",
  "axum",
+ "chrono",
  "config",
  "mongodb",
  "opentelemetry",

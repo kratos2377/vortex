@@ -5,14 +5,15 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
+use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameBetEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
 use sea_orm::{prelude::Expr, ColIdx, Database, EntityTrait, QueryFilter, Set};
 use tokio::{spawn, task::JoinHandle};
 use tracing::warn;
-use ton::models::{self, users};
-use bson::Uuid as BsonUuid;
+use ton::models::{self, game_bets, users};
+use chrono::Utc;
 use uuid::Uuid;
+use sea_orm::ActiveModelTrait;
 use sea_orm::ColumnTrait;
 
 pub mod kafka;
@@ -201,6 +202,26 @@ pub async fn do_listen(
                                 .await;
                     }
 
+                },
+                "user_game_bet" => {
+                    let user_game_bet_payload = serde_json::from_str(&payload);
+
+                    if user_game_bet_payload.is_ok() {
+                        let user_game_bet_model: UserGameBetEvent = user_game_bet_payload.unwrap();
+                        let new_bet = game_bets::ActiveModel {
+                            id: Set(Uuid::new_v4()),
+                            user_id: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
+                            game_id: Set(Uuid::from_str(&user_game_bet_model.game_id).unwrap()),
+                            user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
+                            session_id: Set(user_game_bet_model.session_id),
+                            game_name: Set("chess".to_string()),
+                            bet_amount: Set(user_game_bet_model.amount.into()),
+                            status: Set(GameBetStatus::InProgress.to_string()),
+                            created_at: Set(Utc::now().naive_utc()),
+                            updated_at: Set(Utc::now().naive_utc()),
+                        };
+                        let _ = new_bet.insert(&postgres_conn).await;
+                    }
                 },
                 "user_game_events" => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();

@@ -29,5 +29,6 @@ sea-orm = {version="0.12.12" , features =[   "sqlx-postgres",
     "runtime-tokio-rustls",
     "macros",
     "debug-print"] }
+chrono = { version = "0.4.32", features = ["serde"] }
 orion = {  path = "../orion" }
 ton = {path = "../ton"}

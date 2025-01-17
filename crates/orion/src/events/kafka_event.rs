@@ -55,3 +55,15 @@ pub struct GameGeneralKafkaEvent {
     pub message: String,
     pub game_id: String,
 }
+
+
+//User Bet events
+#[derive(Clone , Serialize , Deserialize)]
+pub struct UserGameBetEvent {
+   pub user_id_who_is_betting: String,
+    pub user_id: String,
+    pub game_id: String,
+    pub bet_type: String ,
+    pub amount: f32,
+    pub session_id: String
+}
