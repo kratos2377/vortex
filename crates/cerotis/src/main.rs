@@ -204,6 +204,9 @@ pub async fn do_listen(
 
                 },
                 "user_game_bet" => {
+                    //If user_id is already present we should update the existing game_bet model. 
+                    // But we should check if user_id_betting on is different or not
+                    // 1 user can bet on 1 user only in each session not on both
                     let user_game_bet_payload = serde_json::from_str(&payload);
 
                     if user_game_bet_payload.is_ok() {

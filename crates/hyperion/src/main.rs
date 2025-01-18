@@ -24,13 +24,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
     let client = redis::Client::open(config.redis_url.url).unwrap();
     let redis_connection = client.get_connection().unwrap(); 
-    let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
 
 
     //Replace mutex redis connection
 
     let context = ContextImpl::new_dyn_context(
-        mongo_db_client,
         Arc::new(Mutex::new(redis_connection)),
         connection.clone()
     );
