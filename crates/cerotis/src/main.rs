@@ -5,11 +5,11 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
-use orion::{constants::{FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{UserFriendRequestKafkaEvent, UserGameBetEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
+use orion::{constants::{CREATE_USER_BET, FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{GameBetEvent, UserFriendRequestKafkaEvent, UserGameBetEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
-use sea_orm::{prelude::Expr, ColIdx, Database, EntityTrait, QueryFilter, Set};
+use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, QueryFilter, Set, Value};
 use tokio::{spawn, task::JoinHandle};
-use tracing::warn;
+use tracing::{info, warn};
 use ton::models::{self, game_bets, users};
 use chrono::Utc;
 use uuid::Uuid;
@@ -203,7 +203,7 @@ pub async fn do_listen(
                     }
 
                 },
-                "user_game_bet" => {
+                CREATE_USER_BET => {
                     //If user_id is already present we should update the existing game_bet model. 
                     // But we should check if user_id_betting on is different or not
                     // 1 user can bet on 1 user only in each session not on both
@@ -211,19 +211,40 @@ pub async fn do_listen(
 
                     if user_game_bet_payload.is_ok() {
                         let user_game_bet_model: UserGameBetEvent = user_game_bet_payload.unwrap();
-                        let new_bet = game_bets::ActiveModel {
-                            id: Set(Uuid::new_v4()),
-                            user_id: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
-                            game_id: Set(Uuid::from_str(&user_game_bet_model.game_id).unwrap()),
-                            user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
-                            session_id: Set(user_game_bet_model.session_id),
-                            game_name: Set("chess".to_string()),
-                            bet_amount: Set(user_game_bet_model.amount.into()),
-                            status: Set(GameBetStatus::InProgress.to_string()),
-                            created_at: Set(Utc::now().naive_utc()),
-                            updated_at: Set(Utc::now().naive_utc()),
-                        };
-                        let _ = new_bet.insert(&postgres_conn).await;
+                        if user_game_bet_model.event_type == GameBetEvent::CREATE {
+                            let new_bet = game_bets::ActiveModel {
+                                id: Set(Uuid::new_v4()),
+                                user_id: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
+                                game_id: Set(Uuid::from_str(&user_game_bet_model.game_id).unwrap()),
+                                user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
+                                session_id: Set(user_game_bet_model.session_id),
+                                game_name: Set("chess".to_string()),
+                                bet_amount: Set(user_game_bet_model.amount.into()),
+                                status: Set(GameBetStatus::InProgress.to_string()),
+                                created_at: Set(Utc::now().naive_utc()),
+                                updated_at: Set(Utc::now().naive_utc()),
+                            };
+                            let _ = new_bet.insert(&postgres_conn).await;
+                        } else {
+                            let update_res = game_bets::Entity::find_by_user_id_game_id_and_session_id(Uuid::from_str(&user_game_bet_model.game_id).unwrap(),
+                            Uuid::from_str(&user_game_bet_model.user_id).unwrap(), user_game_bet_model.session_id).one(&postgres_conn).await;
+
+
+                            if update_res.is_err() {
+                                info!("Error occured while fetch GameBet model for update event type")
+                            } else {
+                                let updated_res_model = update_res.unwrap();
+                                if updated_res_model.is_none() {
+                                    info!("Fetched Game Model is none")
+                                } else {
+                                    let mut game_bet_update_model : game_bets::ActiveModel = updated_res_model.unwrap().into();
+                                    game_bet_update_model.bet_amount  = Set(game_bet_update_model.bet_amount.unwrap() + user_game_bet_model.amount as f64);
+
+                                    let _ = game_bet_update_model.update(&postgres_conn).await;
+
+                                }
+                            }
+                        }
                     }
                 },
                 "user_game_events" => {

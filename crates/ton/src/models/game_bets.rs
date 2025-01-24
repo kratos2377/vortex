@@ -75,5 +75,25 @@ impl Entity {
             .add(Column::GameId.eq(game_id))
         )
     }
+
+    
+    pub fn find_by_user_id_game_id_and_session_id(game_id: Uuid ,  user_id: Uuid , session_id: String) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::UserId.eq(user_id))
+            .add(Column::GameId.eq(game_id))
+            .add(Column::SessionId.eq(session_id))
+        )
+    }
+    
+
+    pub fn find_by_game_id_and_session_id_with_progress(game_id: Uuid ,  session_id: String , status: String) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::GameId.eq(game_id))
+            .add(Column::SessionId.eq(session_id))
+            .add(Column::Status.eq(status))
+        )
+    }
     
 }

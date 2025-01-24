@@ -81,4 +81,19 @@ pub struct KafkaConfiguration {
     pub consumer: Vec<ConsumerConfiguration>,
     pub schema_registry: SchemaRegistryProperties,
     pub topic: TopicConfiguration,
+    pub producer: ProducerProperties,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+pub struct ProducerProperties {
+    pub client_id: String,
+    pub transactional_id: String,
+}
+
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+pub struct RedisConfiguration {
+    pub url: String,
 }

@@ -65,5 +65,63 @@ pub struct UserGameBetEvent {
     pub game_id: String,
     pub bet_type: String ,
     pub amount: f32,
-    pub session_id: String
+    pub session_id: String,
+    pub event_type: GameBetEvent
+}
+
+#[derive(Clone , Serialize , Deserialize , Eq , PartialEq)]
+pub enum GameBetEvent {
+    CREATE,
+    UPDATE
+}
+
+
+
+// Generate Game Bet Events 
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GenerateGameBetSettleEvents {
+    pub game_id: String,
+    pub session_id: String,
+    pub winner_id: String,
+}
+
+
+// GameOver Event
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameOverEvent {
+    pub game_id: String,
+    pub session_id: String,
+    pub winner_id: String,
+}
+
+
+// Game User Bet Settled Events / Game User bet Settled Error Events
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameUserBetSettleEvent {
+    pub game_id: String,
+    pub session_id: String,
+    pub user_id: String,
+    pub winner_id: String,
+    pub is_error: bool
+}
+
+
+//Redis Payload
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameSettleBetErrorRedisPayload {
+    pub game_id: String,
+    pub session_id: String,
+    pub winner_id: String,
+}
+
+
+
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameBetSettleKafkaPayload {
+    pub game_id: String,
+    pub session_id: String,
+    pub winner_id: String,
+    pub user_id: String,
+    pub user_betting_on: String,
+    pub record_id: String,
 }
