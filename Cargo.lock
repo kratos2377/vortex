@@ -1729,7 +1729,6 @@ dependencies = [
  "rand",
  "rdkafka",
  "rust-argon2",
- "schema_registry_converter",
  "sea-orm",
  "serde",
  "serde_bytes",
@@ -2465,6 +2464,36 @@ dependencies = [
 [[package]]
 name = "nova"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-macros",
+ "chrono",
+ "config",
+ "dotenv",
+ "futures",
+ "futures-util",
+ "murmur3",
+ "nano-id",
+ "opentelemetry",
+ "orion",
+ "rdkafka",
+ "redis",
+ "serde",
+ "serde_bytes",
+ "serde_derive",
+ "serde_json",
+ "serde_with 3.12.0",
+ "strum_macros 0.25.3",
+ "tokio",
+ "tower 0.4.13",
+ "tower-cookies",
+ "tower-http",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
+]
 
 [[package]]
 name = "nu-ansi-term"
