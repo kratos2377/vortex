@@ -7,6 +7,7 @@ use kafka::producer;
 use orion::{constants::{CREATE_USER_BET, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
+use reqwest::Client;
 use sea_orm::ColumnTrait;
 use sea_orm::{prelude::Expr, Condition};
 use sea_orm::{Database, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait};
@@ -17,7 +18,8 @@ use ton::models::game_bets;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
+use utils::get_solana_rpc_node_health;
 use uuid::Uuid;
 use futures_util::future;
 
@@ -50,7 +52,10 @@ async fn main()-> Result<(), Box<dyn std::error::Error>>  {
       let state = AppDBState {conn: connection.clone()};
 
 
-      let context = ContextImpl::new_dyn_context( connection , multiplex_redis_conn);
+      let reqwest_client = Client::new();
+
+
+      let context = ContextImpl::new_dyn_context( connection , multiplex_redis_conn , reqwest_client);
 
       let consumers =  kafka::consumer::init_consumers(&config.kafka).unwrap();
 
@@ -212,67 +217,70 @@ pub async fn do_listen(
 
                             // Get 2K records from postgres -> Update status and publish these records to hyperion topic for consumption
 
-                        let tx =     postgres_conn.begin().await.unwrap();
+                        if get_solana_rpc_node_health(context.get_reqwest_client()).await {
+                            info!("Node health successful. Generating game bet events");
+                            let tx =     postgres_conn.begin().await.unwrap();
 
 
 
-                        let mut game_bets = game_bets::Entity::find_by_game_id_and_session_id_with_progress(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
-                         game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string()).limit(2000).all(&postgres_conn).await;
-                  
-                  
-                    if game_bets.is_err() {
-                        error!("Error while fetching GameBets")
-                    } else {
-                        let game_bets_vec = game_bets.unwrap();
-                        
-                        if game_bets_vec.len() > 0 {
-                            let mut records_ids = vec![];
-                            let mut kafka_game_events_vec = vec![];
-    
-                            for bet in game_bets_vec {
-                                records_ids.push(bet.id.clone());
-    
-                                let kafka_game_bet_payload = GameBetSettleKafkaPayload {
-                                    game_id: bet.game_id.to_string().clone(),
-                                    session_id: bet.session_id.clone(),
+                            let mut game_bets = game_bets::Entity::find_by_game_id_and_session_id_with_progress(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
+                             game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string()).limit(2000).all(&postgres_conn).await;
+                      
+                      
+                        if game_bets.is_err() {
+                            error!("Error while fetching GameBets")
+                        } else {
+                            let game_bets_vec = game_bets.unwrap();
+                            
+                            if game_bets_vec.len() > 0 {
+                                let mut records_ids = vec![];
+                                let mut kafka_game_events_vec = vec![];
+        
+                                for bet in game_bets_vec {
+                                    records_ids.push(bet.id.clone());
+        
+                                    let kafka_game_bet_payload = GameBetSettleKafkaPayload {
+                                        game_id: bet.game_id.to_string().clone(),
+                                        session_id: bet.session_id.clone(),
+                                        winner_id: game_bet_res_model.winner_id.clone(),
+                                        user_id: bet.user_id.to_string().clone(),
+                                        user_betting_on: bet.user_id_betting_on.to_string().clone(),
+                                        record_id: bet.id.to_string(),
+                                    };
+        
+                                    kafka_game_events_vec.push(kafka_game_bet_payload);
+                                }
+        
+                                let _ = game_bets::Entity::update_many()
+                                            .col_expr(game_bets::Column::Status, Expr::value(GameBetStatus::ToSettle.to_string()))
+                                            .filter(
+                                                Condition::all()
+                                                .add(game_bets::Column::Id.is_in(records_ids))
+                                            )
+                                            .exec(&postgres_conn)
+                                            .await;
+        
+                                            let _ = tx.commit().await;
+                                
+                                let _ = publish_game_bet_events_for_settlement(&producer , kafka_game_events_vec ).await;
+                           
+                                
+                                let redis_payload = GameSettleBetErrorRedisPayload {
+                                    game_id: game_bet_res_model.game_id.clone(),
+                                    session_id: game_bet_res_model.session_id.clone(),
                                     winner_id: game_bet_res_model.winner_id.clone(),
-                                    user_id: bet.user_id.to_string().clone(),
-                                    user_betting_on: bet.user_id_betting_on.to_string().clone(),
-                                    record_id: bet.id.to_string(),
                                 };
     
-                                kafka_game_events_vec.push(kafka_game_bet_payload);
+    
+                                let mut redis_conn = context.get_redis_connection();
+    
+                                let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                                let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                           
                             }
     
-                            let _ = game_bets::Entity::update_many()
-                                        .col_expr(game_bets::Column::Status, Expr::value(GameBetStatus::ToSettle.to_string()))
-                                        .filter(
-                                            Condition::all()
-                                            .add(game_bets::Column::Id.is_in(records_ids))
-                                        )
-                                        .exec(&postgres_conn)
-                                        .await;
-    
-                                        let _ = tx.commit().await;
-                            
-                            let _ = publish_game_bet_events_for_settlement(&producer , kafka_game_events_vec ).await;
-                       
-                            
-                            let redis_payload = GameSettleBetErrorRedisPayload {
-                                game_id: game_bet_res_model.game_id.clone(),
-                                session_id: game_bet_res_model.session_id.clone(),
-                                winner_id: game_bet_res_model.winner_id.clone(),
-                            };
-
-
-                            let mut redis_conn = context.get_redis_connection();
-
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
-                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
-                       
                         }
-
-                    }
+                        }
                   
                     }
                 },
