@@ -274,12 +274,24 @@ pub async fn do_listen(
     
                                 let mut redis_conn = context.get_redis_connection();
     
-                                let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                                let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
                                 let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                            
                             }
     
                         }
+                        } else {
+                            let redis_payload = GameSettleBetErrorRedisPayload {
+                                game_id: game_bet_res_model.game_id.clone(),
+                                session_id: game_bet_res_model.session_id.clone(),
+                                winner_id: game_bet_res_model.winner_id.clone(),
+                            };
+
+
+                            let mut redis_conn = context.get_redis_connection();
+
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                         }
                   
                     }
