@@ -5,7 +5,7 @@ use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
 use orion::{constants::{CREATE_USER_BET, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents}, models::game_bet_events::GameBetStatus};
-use rdkafka::{consumer::StreamConsumer, error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
+use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
 use sea_orm::ColumnTrait;
@@ -246,6 +246,7 @@ pub async fn do_listen(
                                         user_id: bet.user_id.to_string().clone(),
                                         user_betting_on: bet.user_id_betting_on.to_string().clone(),
                                         record_id: bet.id.to_string(),
+                                        user_wallet_key: decrypt_user_wallet(bet.encrypted_wallet),
                                     };
         
                                     kafka_game_events_vec.push(kafka_game_bet_payload);
@@ -414,6 +415,12 @@ pub async fn do_listen(
         }
 }
 
+}
+
+
+pub fn decrypt_user_wallet(encrypted_wallet_key: String) -> String {
+    let decrypted = crypter::decrypt(b"walletsecretsalt", encrypted_wallet_key.to_bytes()).expect("Failed to decrypt");
+    String::from_utf8(decrypted).unwrap()
 }
 
 

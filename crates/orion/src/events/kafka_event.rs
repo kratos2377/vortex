@@ -66,6 +66,7 @@ pub struct UserGameBetEvent {
     pub bet_type: String ,
     pub amount: f32,
     pub session_id: String,
+    pub wallet_key: String,
     pub event_type: GameBetEvent
 }
 
@@ -124,4 +125,5 @@ pub struct GameBetSettleKafkaPayload {
     pub user_id: String,
     pub user_betting_on: String,
     pub record_id: String,
+    pub user_wallet_key: String,
 }

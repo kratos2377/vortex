@@ -15,7 +15,6 @@ use chrono::Utc;
 use uuid::Uuid;
 use sea_orm::ActiveModelTrait;
 use sea_orm::ColumnTrait;
-
 pub mod kafka;
 pub mod conf;
 pub mod api;
@@ -219,6 +218,7 @@ pub async fn do_listen(
                                 user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
                                 session_id: Set(user_game_bet_model.session_id),
                                 game_name: Set("chess".to_string()),
+                                encrypted_wallet: Set(hash_user_wallet_key(&user_game_bet_model.wallet_key)),
                                 bet_amount: Set(user_game_bet_model.amount.into()),
                                 status: Set(GameBetStatus::InProgress.to_string()),
                                 created_at: Set(Utc::now().naive_utc()),
@@ -313,6 +313,12 @@ pub async fn do_listen(
 
 }
 
+
+fn hash_user_wallet_key(wallet_key: &String) -> String {
+    
+    let hash = crypter::encrypt(b"walletsecretsalt" , wallet_key).expect("failed to encrypt");
+    String::from_utf8(hash).unwrap()
+}
 
 pub fn get_chess_position(cell: &CellPosition) -> String {
    format!("{}{}" , get_file_letter(cell.x) , (8-cell.y).to_string())

@@ -43,3 +43,4 @@ tracing-opentelemetry = "0.23.0"
 nano-id = "0.3.3"
 redis = { version = "0.28.2", features = ["tokio-comp" , "aio"] }
 reqwest = "0.12.12"
+crypter = "0.2.1"
