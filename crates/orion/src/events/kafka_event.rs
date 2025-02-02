@@ -84,6 +84,7 @@ pub struct GenerateGameBetSettleEvents {
     pub game_id: String,
     pub session_id: String,
     pub winner_id: String,
+    pub is_game_valid: bool
 }
 
 
@@ -93,6 +94,7 @@ pub struct GameOverEvent {
     pub game_id: String,
     pub session_id: String,
     pub winner_id: String,
+    pub is_game_valid: bool
 }
 
 
@@ -103,6 +105,7 @@ pub struct GameUserBetSettleEvent {
     pub session_id: String,
     pub user_id: String,
     pub winner_id: String,
+    pub is_game_valid: bool,
     pub is_error: bool
 }
 
@@ -113,6 +116,7 @@ pub struct GameSettleBetErrorRedisPayload {
     pub game_id: String,
     pub session_id: String,
     pub winner_id: String,
+    pub is_game_valid: bool
 }
 
 
@@ -126,4 +130,5 @@ pub struct GameBetSettleKafkaPayload {
     pub user_betting_on: String,
     pub record_id: String,
     pub user_wallet_key: String,
+    pub is_valid: bool
 }

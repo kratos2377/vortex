@@ -247,6 +247,7 @@ pub async fn do_listen(
                                         user_betting_on: bet.user_id_betting_on.to_string().clone(),
                                         record_id: bet.id.to_string(),
                                         user_wallet_key: decrypt_user_wallet(bet.encrypted_wallet),
+                                        is_valid: game_bet_res_model.is_game_valid,
                                     };
         
                                     kafka_game_events_vec.push(kafka_game_bet_payload);
@@ -270,6 +271,7 @@ pub async fn do_listen(
                                     game_id: game_bet_res_model.game_id.clone(),
                                     session_id: game_bet_res_model.session_id.clone(),
                                     winner_id: game_bet_res_model.winner_id.clone(),
+                                    is_game_valid: game_bet_res_model.is_game_valid,
                                 };
     
     
@@ -286,6 +288,7 @@ pub async fn do_listen(
                                 game_id: game_bet_res_model.game_id.clone(),
                                 session_id: game_bet_res_model.session_id.clone(),
                                 winner_id: game_bet_res_model.winner_id.clone(),
+                                is_game_valid: game_bet_res_model.is_game_valid.clone(),
                             };
 
 
@@ -313,6 +316,7 @@ pub async fn do_listen(
                             game_id: game_over_event_model.game_id.clone(),
                             session_id: game_over_event_model.session_id.clone(),
                             winner_id: game_over_event_model.winner_id.clone(),
+                            is_game_valid: game_over_event_model.is_game_valid.clone()
                         };
 
                         let mut redis_conn = context.get_redis_connection();
@@ -385,6 +389,7 @@ pub async fn do_listen(
                                 game_id: game_over_event_model.game_id.clone(),
                                 session_id: game_over_event_model.session_id.clone(),
                                 winner_id: game_over_event_model.winner_id.clone(),
+                                is_game_valid: game_over_event_model.is_game_valid.clone(),
                             };
 
                             let mut redis_conn = context.get_redis_connection();
