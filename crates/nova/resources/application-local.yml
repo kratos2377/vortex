@@ -1,0 +1,17 @@
+server:
+  port: 3005
+
+redis_url:
+  url: redis://localhost:6379
+
+kafka:
+  broker:
+    urls: localhost:9092
+  producer:
+    client_id:  nova
+    transactional_id: nova-transactions
+  topic:
+    mappings:
+      - id: generate_game_bet_events
+        topic_name: generate_game_bet_events
+        partitions: 2

@@ -54,11 +54,6 @@ pub struct ConsumerConfiguration {
     pub group_id: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[allow(unused)]
-pub struct SchemaRegistryProperties {
-    pub url: String,
-}
 
 #[derive(Clone, Debug, Deserialize)]
 #[allow(unused)]
@@ -79,7 +74,6 @@ pub struct TopicProperties {
 pub struct KafkaConfiguration {
     pub broker: BrokerProperties,
     pub consumer: Vec<ConsumerConfiguration>,
-    pub schema_registry: SchemaRegistryProperties,
     pub topic: TopicConfiguration,
     pub producer: ProducerProperties,
 }

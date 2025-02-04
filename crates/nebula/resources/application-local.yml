@@ -3,3 +3,49 @@ server:
 
 postgres_url:
   url: postgres://postgres:secret@localhost:5432/vortex
+
+
+redis_url:
+  url: redis://localhost:6379
+
+kafka:
+  broker:
+    urls: localhost:9092
+  consumer:
+    - id: generate_game_bet_events
+      topic:
+        - generate_game_bet_events
+      client_id: generate_game_bet_events.client.id
+      group_id: generate_game_bet_events.group.id
+    - id: game_over_event
+      topic:
+        - game_over_event
+      client_id: game_over_event.client.id
+      group_id: game_over_event.group.id
+    - id: game_bet_settled
+      topic:
+        - game_bet_settled
+      client_id: game_bet_settled.client.id
+      group_id: game_bet_settled.group.id
+    - id: game_bet_settled_error
+      topic:
+        - game_bet_settled_error
+      client_id: game_bet_settled_error.client.id
+      group_id: game_bet_settled_error.group.id
+  producer:
+    client_id:  nebula
+    transactional_id: nebula-transactions
+  topic:
+    mappings:
+      - id: generate_game_bet_events
+        topic_name: generate_game_bet_events
+        partitions: 2
+      - id: game_over_event
+        topic_name: game_over_event
+        partitions: 2
+      - id: game_bet_settled
+        topic_name: game_bet_settled
+        partitions: 2
+      - id: game_bet_settled_error
+        topic_name: game_bet_settled_error
+        partitions: 2
