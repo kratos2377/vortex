@@ -5,7 +5,7 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
-use orion::{constants::{CREATE_USER_BET, FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_STATUS_EVENT}, events::{kafka_event::{GameBetEvent, UserFriendRequestKafkaEvent, UserGameBetEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
+use orion::{constants::{CREATE_USER_BET, FRIEND_REQUEST_EVENT, GAME_GENERAL_EVENT, GAME_INVITE_EVENT, USER_GAME_DELETION, USER_GAME_EVENTS, USER_GAME_MOVE, USER_JOINED_ROOM, USER_LEFT_ROOM, USER_ONLINE_EVENT, USER_SCORE_UPDATE, USER_STATUS_EVENT}, events::{kafka_event::{GameBetEvent, UserFriendRequestKafkaEvent, UserGameBetEvent, UserGameDeletetionEvent}, ws_events::UserConnectionEventPayload}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
 use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, QueryFilter, Set, Value};
 use tokio::{spawn, task::JoinHandle};
@@ -181,7 +181,7 @@ pub async fn do_listen(
             let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
 
             match topic {
-                "user_game_deletion" => {
+                USER_GAME_DELETION => {
                     let user_game_deletion_event_res = serde_json::from_str(&payload);
                   if(user_game_deletion_event_res.is_ok()) {
                     let user_game_deletion_event: UserGameDeletetionEvent = user_game_deletion_event_res.unwrap();
@@ -190,7 +190,7 @@ pub async fn do_listen(
                     let _ = user_turn_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
                   }
                 },
-                "user_score_update" => {
+                USER_SCORE_UPDATE => {
                     let user_score_update_event_payload = serde_json::from_str(&payload);
 
                     if user_score_update_event_payload.is_ok() {
@@ -247,7 +247,7 @@ pub async fn do_listen(
                         }
                     }
                 },
-                "user_game_events" => {
+                USER_GAME_EVENTS => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
 
                     // Instead of getting current state from mongo keep it in redis or in elixir process

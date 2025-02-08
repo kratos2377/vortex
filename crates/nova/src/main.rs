@@ -159,11 +159,13 @@ pub async fn start_listening_to_key_events(
           let message_stream =   pubsub_conn.on_message().next().await;
 
           if message_stream.is_some() {
+            println!("Reccieved some message from redis pubsub");
             let new_message = message_stream.unwrap();
             let payload: String= new_message.get_payload().unwrap();
             let prod = new_producer.clone();
 
                 let _ = tokio::spawn(async move {
+
 
                         let _ =publish_game_bet_events_for_settlement(&prod, vec![payload]).await;
 
@@ -177,7 +179,7 @@ pub async fn start_listening_to_key_events(
 
 
 pub async fn publish_game_bet_events_for_settlement(producer: &FutureProducer , kafka_events: Vec<String>) -> Result<(), KafkaError> {
-
+    println!("PUBLISHING EVENTS FOR GAME_BET_GENERATE_EVENTS topic");
 
     producer.begin_transaction().unwrap();
 

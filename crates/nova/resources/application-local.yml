@@ -1,7 +1,7 @@
 server:
   port: 3005
 
-redis_url:
+redis:
   url: redis://localhost:6379
 
 kafka:
