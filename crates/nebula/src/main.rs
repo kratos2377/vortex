@@ -246,7 +246,7 @@ pub async fn do_listen(
                                         user_id: bet.user_id.to_string().clone(),
                                         user_betting_on: bet.user_id_betting_on.to_string().clone(),
                                         record_id: bet.id.to_string(),
-                                        user_wallet_key: decrypt_user_wallet(bet.encrypted_wallet),
+                                        user_wallet_key: bet.encrypted_wallet,
                                         is_valid: game_bet_res_model.is_game_valid,
                                     };
         
@@ -302,7 +302,7 @@ pub async fn do_listen(
                 },
 
                 GAME_OVER_EVENT => {
-
+                        println!("Received game over event call");
                     
                     let game_over_event_payload = serde_json::from_str(&payload);
 
@@ -321,8 +321,16 @@ pub async fn do_listen(
 
                         let mut redis_conn = context.get_redis_connection();
 
-                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                        println!("Got redis conn and setting keys");
+                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(30));
+
                         let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                   
+                        if redis_rsp.is_err() {
+                            println!("Error while putting adding redis key");
+                        } else {
+                            println!("Successfully added keys in redis for GameBetSettle");
+                        }
                     }
 
                 },

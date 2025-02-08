@@ -12,7 +12,7 @@ server:
   port: 3005
 
 postgres_url:
-  url: postgres://demo:secret@localhost:5432/vortex?application_name=cerotis
+  url: postgres://postgres:secret@localhost:5432/vortex
 
 redis_url:
   url: redis://localhost:6379
@@ -36,6 +36,11 @@ kafka:
         - user_score_update
       client_id: user_score_update.client.id
       group_id: user_score_update.group.id
+    - id: create_user_bet
+      topic:
+        - create_user_bet
+      client_id: create_user_bet.client.id
+      group_id: create_user_bet.group.id
   producer:
     client_id:  cerotis
     transactional_id: cerotis-transactions

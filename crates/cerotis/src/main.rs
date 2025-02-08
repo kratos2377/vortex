@@ -218,13 +218,18 @@ pub async fn do_listen(
                                 user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
                                 session_id: Set(user_game_bet_model.session_id),
                                 game_name: Set("chess".to_string()),
-                                encrypted_wallet: Set(hash_user_wallet_key(&user_game_bet_model.wallet_key)),
+                                encrypted_wallet: Set(user_game_bet_model.wallet_key),
                                 bet_amount: Set(user_game_bet_model.amount.into()),
                                 status: Set(GameBetStatus::InProgress.to_string()),
                                 created_at: Set(Utc::now().naive_utc()),
                                 updated_at: Set(Utc::now().naive_utc()),
                             };
-                            let _ = new_bet.insert(&postgres_conn).await;
+                            println!("UserGameBetEvent generated");
+                            let res = new_bet.insert(&postgres_conn).await;
+                            if res.is_err() {
+                                println!("Error while inserting payloading");
+                                println!("{:?}" , res.err().unwrap());
+                            }
                         } else {
                             let update_res = game_bets::Entity::find_by_user_id_game_id_and_session_id(Uuid::from_str(&user_game_bet_model.game_id).unwrap(),
                             Uuid::from_str(&user_game_bet_model.user_id).unwrap(), user_game_bet_model.session_id).one(&postgres_conn).await;
@@ -245,6 +250,8 @@ pub async fn do_listen(
                                 }
                             }
                         }
+                    } else {
+                        println!("Error WHile parsing UserGameBetEvent");
                     }
                 },
                 USER_GAME_EVENTS => {
@@ -277,6 +284,7 @@ pub async fn do_listen(
                         
                         }  else {
                             println!("UPDATE RESULT IS NONE");
+                            println!("CURRENT FEN IS: {:?}" , &game_model.chess_state)
                         }
 
                     } else {

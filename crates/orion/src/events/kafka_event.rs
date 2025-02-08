@@ -1,3 +1,5 @@
+use std::{fmt, str::FromStr};
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -70,10 +72,31 @@ pub struct UserGameBetEvent {
     pub event_type: GameBetEvent
 }
 
-#[derive(Clone , Serialize , Deserialize , Eq , PartialEq)]
+#[derive(Clone , Serialize , Deserialize , Eq , PartialEq)]#[serde(rename_all = "UPPERCASE")]
 pub enum GameBetEvent {
     CREATE,
-    UPDATE
+    UPDATE,
+}
+
+impl fmt::Display for GameBetEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GameBetEvent::CREATE => write!(f, "CREATE"),
+            GameBetEvent::UPDATE => write!(f, "UPDATE"),
+        }
+    }
+}
+
+impl FromStr for GameBetEvent {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "CREATE" => Ok(GameBetEvent::CREATE),
+            "UPDATE" => Ok(GameBetEvent::UPDATE),
+            _ => Err(format!("Invalid GameBetEvent: {}", s)),
+        }
+    }
 }
 
 

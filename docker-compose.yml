@@ -113,13 +113,3 @@ services:
       KAFKA_HEAP_OPTS: '-Xmx384m -Xms128m'
       KAFKA_JVM_PERFORMANCE_OPTS: '-client -XX:+UseG1GC -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -Djava.awt.headless=true'
     mem_limit: 768m
-
-
-  emqx:
-    image: emqx/emqx:latest
-    hostname: emqx
-    container_name: emqx
-    ports:
-     - "1883:1883"
-     - "18083:18083"
-     - "8083:8083"
