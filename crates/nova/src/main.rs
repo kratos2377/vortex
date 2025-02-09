@@ -151,12 +151,6 @@ pub async fn start_listening_to_key_events(
  let res =  pubsub_conn.psubscribe("*").await;
 
 
- if res.is_err() {
-    println!("Error while subscribing to pattern");
- } else {
-    println!("sb changa si");
- }
-
   let new_producer = producer.clone();
 
 
