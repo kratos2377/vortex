@@ -252,6 +252,7 @@ pub async fn do_listen(
                         }
                     } else {
                         println!("Error WHile parsing UserGameBetEvent");
+                        println!("{:?}" , user_game_bet_payload.err().unwrap());
                     }
                 },
                 USER_GAME_EVENTS => {
