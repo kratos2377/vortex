@@ -21,6 +21,7 @@ services:
   redis:
     image: redis:latest
     container_name: redis
+    command: sh -cx "redis-server --daemonize yes && redis-cli config set notify-keyspace-events KEx && sleep infinity"
     ports:
       - "6379:6379"
 
