@@ -38,7 +38,7 @@ fn init_consumer(
 ) -> Result<StreamConsumer, Error> {
     // Initialize consumer
     let consumer: StreamConsumer = ClientConfig::new()
-        .set("auto.offset.reset", "earliest")
+        .set("auto.offset.reset", "latest")
         .set("allow.auto.create.topics", "false")
         .set("bootstrap.servers", bootstrap_servers)
         .set("enable.auto.commit", "true")

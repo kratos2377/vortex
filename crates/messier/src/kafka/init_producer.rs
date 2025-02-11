@@ -12,8 +12,8 @@ pub fn create_new_kafka_producer(config: &KafkaConfiguration) -> Result<FuturePr
     let nan_id_gen = nano_id::base64::<15>();
     let producer: FutureProducer = ClientConfig::new()
         .set("bootstrap.servers", config.broker.urls.clone())
-        .set("request.timeout.ms", "10000") // Maximum amount of time the client will wait for the response of a reques
-        .set("delivery.timeout.ms", "15000") // Upper bound on the time to report success or failure after a call to send() returns
+        .set("request.timeout.ms", "5000") // Maximum amount of time the client will wait for the response of a reques
+        .set("delivery.timeout.ms", "5000") // Upper bound on the time to report success or failure after a call to send() returns
         .set("enable.idempotence", "true") // Ensure that exactly one copy of each message is written in the stream
         // Number of unacknowledged requests the client will send on a single connection before
         // blocking
