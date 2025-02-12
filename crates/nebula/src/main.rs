@@ -1,20 +1,21 @@
 use std::{collections::HashMap, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 
 use axum::Router;
+use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
-use orion::{constants::{CREATE_USER_BET, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents}, models::game_bet_events::GameBetStatus};
+use orion::{constants::{CREATE_USER_BET, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
-use sea_orm::ColumnTrait;
+use sea_orm::{ColumnTrait, DbErr};
 use sea_orm::{prelude::Expr, Condition};
 use sea_orm::{Database, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait};
 use state::AppDBState;
 use sea_orm::ActiveModelTrait;
 use tokio::{spawn, task::JoinHandle};
-use ton::models::game_bets;
+use ton::models::game_bets::{self, Model};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
@@ -223,9 +224,8 @@ pub async fn do_listen(
 
 
 
-                            let mut game_bets = game_bets::Entity::find_by_game_id_and_session_id_with_progress(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
-                             game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string()).limit(2000).all(&postgres_conn).await;
-                      
+                            let mut game_bets = game_bets::Entity::find_by_game_id_and_session_id_with_progress_with_winner_id(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
+                            game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_bet_res_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await;
                       
                         if game_bets.is_err() {
                             error!("Error while fetching GameBets")
@@ -303,6 +303,9 @@ pub async fn do_listen(
 
                 GAME_OVER_EVENT => {
                         println!("Received game over event call");
+
+
+                        // Should change status of events which lost the bet here itself
                     
                     let game_over_event_payload = serde_json::from_str(&payload);
 
@@ -312,6 +315,62 @@ pub async fn do_listen(
                         let game_over_event_model: GameOverEvent = game_over_event_payload.unwrap();
 
 
+                        let tx =     postgres_conn.begin().await.unwrap();
+
+
+
+                        let mut game_bets = if game_over_event_model.is_game_valid {
+                            game_bets::Entity::find_by_game_id_and_session_id_with_progress_not_equal_to_winner_id(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
+                        game_over_event_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await
+                  
+                        } else {
+                            // If not valid only player with issue must be settle rest should be compensated
+                            //TODO
+                            //Change winner id to player id by sending one more keyfield. This will require model change and adding change in vortex-pub-sub as well
+                            game_bets::Entity::find_by_game_id_and_session_id_for_invalid_game(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
+                        game_over_event_model.session_id.clone()  , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await
+                        };
+                    if game_bets.is_err() {
+                        error!("Error while fetching GameBets")
+                    } else {
+                        let game_bets_vec = game_bets.unwrap();
+                        
+                        if game_bets_vec.len() > 0 {
+                            let mut records_ids = vec![];
+                            let mut kafka_game_events_vec = vec![];
+    
+                            for bet in game_bets_vec {
+                                records_ids.push(bet.id.clone());
+    
+                                let kafka_game_bet_payload = GameBetSettleKafkaPayload {
+                                    game_id: bet.game_id.to_string().clone(),
+                                    session_id: bet.session_id.clone(),
+                                    winner_id: game_over_event_model.winner_id.clone(),
+                                    user_id: bet.user_id.to_string().clone(),
+                                    user_betting_on: bet.user_id_betting_on.to_string().clone(),
+                                    record_id: bet.id.to_string(),
+                                    user_wallet_key: bet.encrypted_wallet,
+                                    is_valid: game_over_event_model.is_game_valid,
+                                };
+    
+                                kafka_game_events_vec.push(kafka_game_bet_payload);
+                            }
+    
+                            let _ = game_bets::Entity::update_many()
+                                        .col_expr(game_bets::Column::Status, Expr::value(GameBetStatus::Settled.to_string()))
+                                        .filter(
+                                            Condition::all()
+                                            .add(game_bets::Column::Id.is_in(records_ids))
+                                        )
+                                        .exec(&postgres_conn)
+                                        .await;
+    
+                                        let _ = tx.commit().await;
+
+                            }
+
+                        
+                    }
                         let redis_payload = GameSettleBetErrorRedisPayload {
                             game_id: game_over_event_model.game_id.clone(),
                             session_id: game_over_event_model.session_id.clone(),
@@ -404,16 +463,63 @@ pub async fn do_listen(
 
                             let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
                             let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
-
-
                         }
-
-
                     }
+                },
 
 
+                CREATE_USER_BET => {
+                    //If user_id is already present we should update the existing game_bet model. 
+                    // But we should check if user_id_betting on is different or not
+                    // 1 user can bet on 1 user only in each session not on both
+                    let user_game_bet_payload = serde_json::from_str(&payload);
+
+                    if user_game_bet_payload.is_ok() {
+                        let user_game_bet_model: UserGameBetEvent = user_game_bet_payload.unwrap();
+                        if user_game_bet_model.event_type == GameBetEvent::CREATE {
+                            let new_bet = game_bets::ActiveModel {
+                                id: Set(Uuid::new_v4()),
+                                user_id: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
+                                game_id: Set(Uuid::from_str(&user_game_bet_model.game_id).unwrap()),
+                                user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
+                                session_id: Set(user_game_bet_model.session_id),
+                                game_name: Set("chess".to_string()),
+                                encrypted_wallet: Set(user_game_bet_model.wallet_key),
+                                bet_amount: Set(user_game_bet_model.amount.into()),
+                                status: Set(GameBetStatus::InProgress.to_string()),
+                                created_at: Set(Utc::now().naive_utc()),
+                                updated_at: Set(Utc::now().naive_utc()),
+                            };
+                            println!("UserGameBetEvent generated");
+                            let res = new_bet.insert(&postgres_conn).await;
+                            if res.is_err() {
+                                println!("Error while inserting payloading");
+                                println!("{:?}" , res.err().unwrap());
+                            }
+                        } else {
+                            let update_res = game_bets::Entity::find_by_user_id_game_id_and_session_id(Uuid::from_str(&user_game_bet_model.game_id).unwrap(),
+                            Uuid::from_str(&user_game_bet_model.user_id).unwrap(), user_game_bet_model.session_id).one(&postgres_conn).await;
 
 
+                            if update_res.is_err() {
+                                info!("Error occured while fetch GameBet model for update event type")
+                            } else {
+                                let updated_res_model = update_res.unwrap();
+                                if updated_res_model.is_none() {
+                                    info!("Fetched Game Model is none")
+                                } else {
+                                    let mut game_bet_update_model : game_bets::ActiveModel = updated_res_model.unwrap().into();
+                                    game_bet_update_model.bet_amount  = Set(game_bet_update_model.bet_amount.unwrap() + user_game_bet_model.amount as f64);
+
+                                    let _ = game_bet_update_model.update(&postgres_conn).await;
+
+                                }
+                            }
+                        }
+                    } else {
+                        println!("Error WHile parsing UserGameBetEvent");
+                        println!("{:?}" , user_game_bet_payload.err().unwrap());
+                    }
                 },
             
 

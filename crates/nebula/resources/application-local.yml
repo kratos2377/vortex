@@ -32,6 +32,11 @@ kafka:
         - game_bet_settled_error
       client_id: game_bet_settled_error.client.id
       group_id: game_bet_settled_error.group.id
+    - id: create_user_bet
+      topic:
+        - create_user_bet
+      client_id: create_user_bet.client.id
+      group_id: create_user_bet.group.id
   producer:
     client_id:  nebula
     transactional_id: nebula-transactions

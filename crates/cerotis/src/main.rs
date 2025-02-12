@@ -202,59 +202,6 @@ pub async fn do_listen(
                     }
 
                 },
-                CREATE_USER_BET => {
-                    //If user_id is already present we should update the existing game_bet model. 
-                    // But we should check if user_id_betting on is different or not
-                    // 1 user can bet on 1 user only in each session not on both
-                    let user_game_bet_payload = serde_json::from_str(&payload);
-
-                    if user_game_bet_payload.is_ok() {
-                        let user_game_bet_model: UserGameBetEvent = user_game_bet_payload.unwrap();
-                        if user_game_bet_model.event_type == GameBetEvent::CREATE {
-                            let new_bet = game_bets::ActiveModel {
-                                id: Set(Uuid::new_v4()),
-                                user_id: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
-                                game_id: Set(Uuid::from_str(&user_game_bet_model.game_id).unwrap()),
-                                user_id_betting_on: Set(Uuid::from_str(&user_game_bet_model.user_id).unwrap()),
-                                session_id: Set(user_game_bet_model.session_id),
-                                game_name: Set("chess".to_string()),
-                                encrypted_wallet: Set(user_game_bet_model.wallet_key),
-                                bet_amount: Set(user_game_bet_model.amount.into()),
-                                status: Set(GameBetStatus::InProgress.to_string()),
-                                created_at: Set(Utc::now().naive_utc()),
-                                updated_at: Set(Utc::now().naive_utc()),
-                            };
-                            println!("UserGameBetEvent generated");
-                            let res = new_bet.insert(&postgres_conn).await;
-                            if res.is_err() {
-                                println!("Error while inserting payloading");
-                                println!("{:?}" , res.err().unwrap());
-                            }
-                        } else {
-                            let update_res = game_bets::Entity::find_by_user_id_game_id_and_session_id(Uuid::from_str(&user_game_bet_model.game_id).unwrap(),
-                            Uuid::from_str(&user_game_bet_model.user_id).unwrap(), user_game_bet_model.session_id).one(&postgres_conn).await;
-
-
-                            if update_res.is_err() {
-                                info!("Error occured while fetch GameBet model for update event type")
-                            } else {
-                                let updated_res_model = update_res.unwrap();
-                                if updated_res_model.is_none() {
-                                    info!("Fetched Game Model is none")
-                                } else {
-                                    let mut game_bet_update_model : game_bets::ActiveModel = updated_res_model.unwrap().into();
-                                    game_bet_update_model.bet_amount  = Set(game_bet_update_model.bet_amount.unwrap() + user_game_bet_model.amount as f64);
-
-                                    let _ = game_bet_update_model.update(&postgres_conn).await;
-
-                                }
-                            }
-                        }
-                    } else {
-                        println!("Error WHile parsing UserGameBetEvent");
-                        println!("{:?}" , user_game_bet_payload.err().unwrap());
-                    }
-                },
                 USER_GAME_EVENTS => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
 

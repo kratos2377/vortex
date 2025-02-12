@@ -96,5 +96,35 @@ impl Entity {
             .add(Column::Status.eq(status))
         )
     }
+
+
+    pub fn find_by_game_id_and_session_id_with_progress_with_winner_id(game_id: Uuid ,  session_id: String , status: String , winner_id: Uuid) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::GameId.eq(game_id))
+            .add(Column::SessionId.eq(session_id))
+            .add(Column::Status.eq(status))
+            .add(Column::UserIdBettingOn.eq(winner_id))
+        )
+    }
+
+    pub fn find_by_game_id_and_session_id_with_progress_not_equal_to_winner_id(game_id: Uuid ,  session_id: String , status: String , winner_id: Uuid) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::GameId.eq(game_id))
+            .add(Column::SessionId.eq(session_id))
+            .add(Column::Status.eq(status))
+            .add(Column::UserIdBettingOn.ne(winner_id))
+        )
+    }
+
+    pub fn find_by_game_id_and_session_id_for_invalid_game(game_id: Uuid ,  session_id: String , player_id: Uuid) -> Select<Entity> {
+        Self::find().filter(
+            Condition::all()
+            .add(Column::GameId.eq(game_id))
+            .add(Column::SessionId.eq(session_id))
+            .add(Column::UserId.eq(player_id))
+        )
+    }
     
 }
