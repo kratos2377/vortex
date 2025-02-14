@@ -7,7 +7,7 @@ use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
 use orion::{ constants::{CHESS_STATE_REDIS_KEY, CREATE_USER_BET, USER_GAME_DELETION, USER_GAME_EVENTS, USER_SCORE_UPDATE}, events::kafka_event::{GameBetEvent, UserGameBetEvent, UserGameDeletetionEvent}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
-use redis::AsyncCommands;
+use redis::{AsyncCommands, RedisResult};
 use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, QueryFilter, Set, Value};
 use tokio::{spawn, task::JoinHandle};
 use tracing::{info, warn};
@@ -174,7 +174,7 @@ pub async fn do_listen(
     let postgres_conn = context.get_postgres_db_client();
 
 
-    let redis_conn = context.get_redis_db_client();
+    let mut redis_conn = context.get_redis_db_client();
 
     loop {
         match stream_consumer.recv().await {
@@ -208,14 +208,15 @@ pub async fn do_listen(
                 },
                 USER_GAME_EVENTS => {
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
-
+                    let mut state_key = CHESS_STATE_REDIS_KEY.to_owned();
+                    state_key.push_str(&user_game_event_payload.game_id);
                     // Instead of getting current state from mongo keep it in redis or in elixir process
-                    let rsp = redis_conn.get(CHESS_STATE_REDIS_KEY + user_game_event_payload.game_id.clone()).await;
+                    let rsp: RedisResult<String>  = redis_conn.get(state_key.clone()).await;
 
 
                    if rsp.is_ok() {
                     let game_model = rsp.unwrap();
-
+                    println!("Game state is: {:?}" , game_model);
                     let _rsp = if user_game_event_payload.move_type == "normal" {
                         let gm_ev: ChessNormalEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
             
@@ -223,21 +224,21 @@ pub async fn do_listen(
                         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
                         let piece: Vec<char> = gm_ev.piece.chars().collect();
                 
-                        let updated_fen = fen_update::update_fen_with_timing(&game_model.chess_state, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , None );
+                        let updated_fen = fen_update::update_fen_with_timing(&game_model, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , None );
 
                         if updated_fen.is_some() {
                             let updated_fen_rsp = updated_fen.unwrap();
                            // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
                             
 
-                             let redis_res =    redis_conn.set("ChessState_" + user_game_event_payload.game_id.clone() , updated_fen_rsp).await;
+                             let redis_res: RedisResult<()> =    redis_conn.set(state_key.clone() , updated_fen_rsp.fen).await;
 
                           
                           
                         
                         }  else {
                             println!("UPDATE RESULT IS NONE");
-                            println!("CURRENT FEN IS: {:?}" , &game_model.chess_state)
+                            println!("CURRENT FEN IS: {:?}" , &game_model)
                         }
 
                     } else {
@@ -246,12 +247,13 @@ pub async fn do_listen(
                         let new_position: CellPosition = serde_json::from_str(&gm_ev.target_cell).unwrap();
                         let piece: Vec<char> = gm_ev.piece.chars().collect();
                         let promoted_to: Vec<char> = gm_ev.promoted_to.chars().collect();
-                        let updated_fen = fen_update::update_fen_with_timing(&game_model.chess_state, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , Some(*promoted_to.get(0).unwrap()) );
+                        let updated_fen = fen_update::update_fen_with_timing(&game_model, *piece.get(0).unwrap() , &get_chess_position(&old_position) , &get_chess_position(&new_position) , Some(*promoted_to.get(0).unwrap()) );
 
                         if updated_fen.is_some() {
                             let updated_fen_rsp = updated_fen.unwrap();
                            // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
-                           let redis_res =    redis_conn.set(CHESS_STATE_REDIS_KEY + user_game_event_payload.game_id.clone() , updated_fen_rsp).await;
+
+                           let redis_res: RedisResult<()> =    redis_conn.set(state_key.clone(), updated_fen_rsp.fen).await;
                         } 
 
                     };
