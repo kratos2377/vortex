@@ -5,8 +5,9 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
-use orion::{ constants::{CREATE_USER_BET, USER_GAME_DELETION, USER_GAME_EVENTS, USER_SCORE_UPDATE}, events::kafka_event::{GameBetEvent, UserGameBetEvent, UserGameDeletetionEvent}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
+use orion::{ constants::{CHESS_STATE_REDIS_KEY, CREATE_USER_BET, USER_GAME_DELETION, USER_GAME_EVENTS, USER_SCORE_UPDATE}, events::kafka_event::{GameBetEvent, UserGameBetEvent, UserGameDeletetionEvent}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
+use redis::AsyncCommands;
 use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, QueryFilter, Set, Value};
 use tokio::{spawn, task::JoinHandle};
 use tracing::{info, warn};
@@ -37,11 +38,11 @@ async fn main()  {
     };
     
     let client = redis::Client::open(config.redis_url.url.clone()).unwrap();
-    let redis_connection = client.get_connection().unwrap(); 
+    let redis_connection = client.get_multiplexed_async_connection().await.unwrap(); 
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
     
     
-    let context = ContextImpl::new_dyn_context(mongo_db_client,  Arc::new(Mutex::new(redis_connection)) , connection);
+    let context = ContextImpl::new_dyn_context(mongo_db_client,  redis_connection , connection);
     
     let user_and_game_handles = init_user_and_game_kafka_consumer(
         context,
@@ -172,6 +173,9 @@ pub async fn do_listen(
 
     let postgres_conn = context.get_postgres_db_client();
 
+
+    let redis_conn = context.get_redis_db_client();
+
     loop {
         match stream_consumer.recv().await {
             Err(e) => warn!("Error: {}", e),
@@ -206,12 +210,11 @@ pub async fn do_listen(
                     let user_game_event_payload: UserGameMove = serde_json::from_str(&payload).unwrap();
 
                     // Instead of getting current state from mongo keep it in redis or in elixir process
-                    let rsp = game_collection.find_one(doc! { "id": user_game_event_payload.game_id.clone()}, None).await;
-                    let rsp_clone = rsp.clone();
-                    // Fix the fen update fn
+                    let rsp = redis_conn.get(CHESS_STATE_REDIS_KEY + user_game_event_payload.game_id.clone()).await;
 
-                   if rsp_clone.is_ok() && rsp_clone.unwrap().is_some() {
-                    let game_model = rsp.unwrap().unwrap();
+
+                   if rsp.is_ok() {
+                    let game_model = rsp.unwrap();
 
                     let _rsp = if user_game_event_payload.move_type == "normal" {
                         let gm_ev: ChessNormalEvent = serde_json::from_str(&user_game_event_payload.user_move).unwrap();
@@ -225,9 +228,11 @@ pub async fn do_listen(
                         if updated_fen.is_some() {
                             let updated_fen_rsp = updated_fen.unwrap();
                            // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
-                      
-                            let _ = game_collection.update_one(doc! { "id": user_game_event_payload.game_id.clone()}, doc! { "$set": doc! {"chess_state": updated_fen_rsp.fen } }, None).await;
-                        
+                            
+
+                             let redis_res =    redis_conn.set("ChessState_" + user_game_event_payload.game_id.clone() , updated_fen_rsp).await;
+
+                          
                           
                         
                         }  else {
@@ -246,12 +251,14 @@ pub async fn do_listen(
                         if updated_fen.is_some() {
                             let updated_fen_rsp = updated_fen.unwrap();
                            // println!("Updated Fen is: {:?}" , updated_fen.unwrap());
-                            let _ = game_collection.update_one(doc! { "id": user_game_event_payload.game_id.clone()}, doc! { "$set": doc! {"chess_state": updated_fen_rsp.fen } }, None).await;
+                           let redis_res =    redis_conn.set(CHESS_STATE_REDIS_KEY + user_game_event_payload.game_id.clone() , updated_fen_rsp).await;
                         } 
 
                     };
 
-                   } 
+                   }  else {
+                    println!("Receieved error while fetching ChessState key from redis");
+                   }
                    
                 }
 

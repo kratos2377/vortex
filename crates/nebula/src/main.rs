@@ -5,7 +5,7 @@ use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
-use orion::{constants::{CREATE_USER_BET, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
+use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
@@ -371,6 +371,13 @@ pub async fn do_listen(
 
                         
                     }
+
+                    let ewxecutor_game_over_event = ExecutorGameOverEvent {
+                        game_id: game_over_event_model.game_id.clone(),
+                        session_id: game_over_event_model.session_id.clone(),
+                    };
+                    let _  = publish_game_over_event_for_executors(&producer, vec![ewxecutor_game_over_event]);
+                    
                         let redis_payload = GameSettleBetErrorRedisPayload {
                             game_id: game_over_event_model.game_id.clone(),
                             session_id: game_over_event_model.session_id.clone(),
@@ -557,6 +564,44 @@ pub async fn publish_game_bet_events_for_settlement(producer: &FutureProducer , 
             FutureRecord::to(START_GAME_SETTLE_EVENT)
                     .payload(&converted_string_event)
                     .key("settle_event"),
+            Duration::from_secs(2),
+        )
+        .await;
+
+    // This will be executed when the result is received.
+  //  println!("Delivery status for message {} received", i);
+    delivery_result
+
+    })
+
+    ).await;
+
+    match kafka_result {
+        Ok(_) => (),
+        Err(e) => return Err(e.0.into()),
+    }
+
+    producer.commit_transaction(Timeout::from(Duration::from_secs(1))).unwrap(); 
+
+    Ok(())
+
+}
+
+
+pub async fn publish_game_over_event_for_executors(producer: &FutureProducer , kafka_events: Vec<ExecutorGameOverEvent>) -> Result<(), KafkaError> {
+
+
+    producer.begin_transaction().unwrap();
+
+
+    let kafka_result = future::try_join_all(kafka_events.iter().map(|event| async move {
+        let converted_string_event = serde_json::to_string(event).unwrap();
+        
+        let delivery_result = producer
+        .send(
+            FutureRecord::to(EXECUTOR_GAME_OVER_EVENT)
+                    .payload(&converted_string_event)
+                    .key("executor_game_over_event"),
             Duration::from_secs(2),
         )
         .await;

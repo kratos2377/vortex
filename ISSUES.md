@@ -1,0 +1,2 @@
+- [x] Produce  events for game over so that executors can change status to game_over
+- [ ] Redis POC to keep check of chess state updates

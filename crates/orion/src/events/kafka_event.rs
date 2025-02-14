@@ -155,3 +155,10 @@ pub struct GameBetSettleKafkaPayload {
     pub user_wallet_key: String,
     pub is_valid: bool
 }
+
+
+#[derive(Clone , Serialize , Deserialize)]
+pub struct ExecutorGameOverEvent {
+    pub game_id: String,
+    pub session_id: String,
+}
