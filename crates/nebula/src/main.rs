@@ -5,7 +5,7 @@ use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
-use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
+use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, EXECUTOR_GAME_OVER_STATUS_SETTLED, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStatusChangeEvent, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
@@ -197,6 +197,8 @@ pub async fn do_listen(
 ) {
 
     let postgres_conn = context.get_postgres_db_client();
+    
+    let mut redis_conn = context.get_redis_connection();
 
     loop {
         match stream_consumer.recv().await {
@@ -372,12 +374,7 @@ pub async fn do_listen(
                         
                     }
 
-                    let ewxecutor_game_over_event = ExecutorGameOverEvent {
-                        game_id: game_over_event_model.game_id.clone(),
-                        session_id: game_over_event_model.session_id.clone(),
-                    };
-                    let _  = publish_game_over_event_for_executors(&producer, vec![ewxecutor_game_over_event]);
-                    
+                    // Storing game over status key in redis. Nova crate will listenm to GameOverStatus keys as well                    
                         let redis_payload = GameSettleBetErrorRedisPayload {
                             game_id: game_over_event_model.game_id.clone(),
                             session_id: game_over_event_model.session_id.clone(),
@@ -390,10 +387,11 @@ pub async fn do_listen(
                         println!("Got redis conn and setting keys");
                         let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(30));
 
-                        let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                        //First we will save GameOverKey as we have to change game over status first before generating game bet settle events
+                        let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_OVER_STATUS_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                    
                         if redis_rsp.is_err() {
-                            println!("Error while putting adding redis key");
+                            println!("Error while putting adding redis key for game over status");
                         } else {
                             println!("Successfully added keys in redis for GameBetSettle");
                         }
@@ -466,7 +464,6 @@ pub async fn do_listen(
                                 is_game_valid: game_over_event_model.is_game_valid.clone(),
                             };
 
-                            let mut redis_conn = context.get_redis_connection();
 
                             let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
                             let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
@@ -496,6 +493,7 @@ pub async fn do_listen(
                                 status: Set(GameBetStatus::InProgress.to_string()),
                                 created_at: Set(Utc::now().naive_utc()),
                                 updated_at: Set(Utc::now().naive_utc()),
+                                is_player: Set(user_game_bet_model.is_player),
                             };
                             println!("UserGameBetEvent generated");
                             let res = new_bet.insert(&postgres_conn).await;
@@ -528,7 +526,40 @@ pub async fn do_listen(
                         println!("{:?}" , user_game_bet_payload.err().unwrap());
                     }
                 },
-            
+
+
+                EXECUTOR_GAME_OVER_STATUS_SETTLED => {
+                    let game_status_change_event = serde_json::from_str(&payload);
+
+
+                    if game_status_change_event.is_ok() {
+                        let game_status_change_event_record : GameStatusChangeEvent = game_status_change_event.unwrap();
+
+                        let redis_payload = GameSettleBetErrorRedisPayload {
+                            game_id: game_status_change_event_record.game_id.clone(),
+                            session_id: game_status_change_event_record.session_id.clone(),
+                            winner_id: game_status_change_event_record.winner_id.clone(),
+                            is_game_valid: game_status_change_event_record.is_game_valid.clone(),
+                        };
+
+
+                        if game_status_change_event_record.is_error {            
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(30));
+                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_OVER_STATUS_KEY.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+
+                        } else {
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                        }
+
+
+                        
+
+                    } else {
+                        println!("Error parsing game status change event");
+                    }
+
+                }
 
                 _ => {
                     println!("No topics found")
@@ -564,44 +595,6 @@ pub async fn publish_game_bet_events_for_settlement(producer: &FutureProducer , 
             FutureRecord::to(START_GAME_SETTLE_EVENT)
                     .payload(&converted_string_event)
                     .key("settle_event"),
-            Duration::from_secs(2),
-        )
-        .await;
-
-    // This will be executed when the result is received.
-  //  println!("Delivery status for message {} received", i);
-    delivery_result
-
-    })
-
-    ).await;
-
-    match kafka_result {
-        Ok(_) => (),
-        Err(e) => return Err(e.0.into()),
-    }
-
-    producer.commit_transaction(Timeout::from(Duration::from_secs(1))).unwrap(); 
-
-    Ok(())
-
-}
-
-
-pub async fn publish_game_over_event_for_executors(producer: &FutureProducer , kafka_events: Vec<ExecutorGameOverEvent>) -> Result<(), KafkaError> {
-
-
-    producer.begin_transaction().unwrap();
-
-
-    let kafka_result = future::try_join_all(kafka_events.iter().map(|event| async move {
-        let converted_string_event = serde_json::to_string(event).unwrap();
-        
-        let delivery_result = producer
-        .send(
-            FutureRecord::to(EXECUTOR_GAME_OVER_EVENT)
-                    .payload(&converted_string_event)
-                    .key("executor_game_over_event"),
             Duration::from_secs(2),
         )
         .await;

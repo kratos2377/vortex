@@ -69,7 +69,8 @@ pub struct UserGameBetEvent {
     pub amount: f32,
     pub session_id: String,
     pub wallet_key: String,
-    pub event_type: GameBetEvent
+    pub event_type: GameBetEvent,
+    pub is_player: bool
 }
 
 #[derive(Clone , Serialize , Deserialize , Eq , PartialEq)]#[serde(rename_all = "UPPERCASE")]
@@ -142,6 +143,15 @@ pub struct GameSettleBetErrorRedisPayload {
     pub is_game_valid: bool
 }
 
+
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameStatusChangeEvent {
+    pub game_id: String,
+    pub session_id: String,
+    pub winner_id: String,
+    pub is_game_valid: bool,
+    pub is_error: bool
+}
 
 
 #[derive(Clone , Serialize , Deserialize)]

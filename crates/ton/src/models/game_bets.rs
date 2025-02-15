@@ -15,6 +15,7 @@ pub struct Model {
     pub bet_amount: f64,
     pub status: String,
     pub encrypted_wallet: String,
+    pub is_player: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }
