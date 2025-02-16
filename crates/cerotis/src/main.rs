@@ -207,9 +207,9 @@ pub async fn do_listen(
                     let user_game_deletion_event_res = serde_json::from_str(&payload);
                   if(user_game_deletion_event_res.is_ok()) {
                     let user_game_deletion_event: UserGameDeletetionEvent = user_game_deletion_event_res.unwrap();
-                    let _ = user_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id.clone()}, None).await;
-                    let _ = game_collection.delete_one(doc! { "id": user_game_deletion_event.game_id.clone()}, None).await;
-                    let _ = user_turn_collection.delete_one(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
+                    let _ = user_collection.delete_many(doc! { "game_id": user_game_deletion_event.game_id.clone()}, None).await;
+                    let _ = game_collection.delete_many(doc! { "id": user_game_deletion_event.game_id.clone()}, None).await;
+                    let _ = user_turn_collection.delete_many(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
                   }
                 },
                 USER_SCORE_UPDATE => {
