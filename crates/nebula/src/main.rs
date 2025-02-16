@@ -15,7 +15,7 @@ use sea_orm::{Database, EntityTrait, QueryFilter, QuerySelect, Set, TransactionT
 use state::AppDBState;
 use sea_orm::ActiveModelTrait;
 use tokio::{spawn, task::JoinHandle};
-use ton::models::game_bets::{self, Model};
+use ton::models::{game, game_bets::{self, Model}};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
@@ -385,10 +385,10 @@ pub async fn do_listen(
                         let mut redis_conn = context.get_redis_connection();
 
                         println!("Got redis conn and setting keys");
-                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(30));
+                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(10));
 
                         //First we will save GameOverKey as we have to change game over status first before generating game bet settle events
-                        let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_OVER_STATUS_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                        let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                    
                         if redis_rsp.is_err() {
                             println!("Error while putting adding redis key for game over status");
@@ -531,18 +531,35 @@ pub async fn do_listen(
                 STAKE_TIME_OVER => {
                     let game_stake_status_event = serde_json::from_str(&payload);
 
-
+                    
                     if game_stake_status_event.is_ok() {
+                    
+                    
                         let game_status_change_event_record : orion::events::kafka_event::GameStakeTimeOverEvent = game_stake_status_event.unwrap();
 
-                        let redis_payload = GameStakeTimeRedisPayload {
-                            game_id: game_status_change_event_record.game_id.clone(),
-                            session_id: game_status_change_event_record.session_id.clone(),
-                        };
 
+                        let game_record_res = game::Entity::find_by_game_id_and_session_id(Uuid::from_str(&game_status_change_event_record.game_id).unwrap(),
+                         game_status_change_event_record.session_id.clone()).all(&postgres_conn).await;
 
-                    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(60));
-                    let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                        if game_record_res.is_ok() {
+                            let game_record = game_record_res.unwrap();
+                          
+                            if game_record.len() > 0 {
+                                let game_record_model = game_record.get(0).unwrap();
+
+                                if game_record_model.is_stake_allowed {
+                                    let redis_payload = GameStakeTimeRedisPayload {
+                                        game_id: game_status_change_event_record.game_id.clone(),
+                                        session_id: game_record_model.session_id.clone(),
+                                    };
+            
+            
+                                let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(60));
+                                let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id.clone(), serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                                }
+                            }
+
+                        }
                 
                     } else {
                         println!("Error parsing game stake time over event");
@@ -572,6 +589,15 @@ pub async fn do_listen(
 
 
                      } else {
+                        let res = game::Entity::update_many() 
+                             .col_expr(game::Column::IsStakeAllowed, Expr::value(false))
+                        .filter(
+                            Condition::all()
+                            .add(game::Column::GameId.eq(Uuid::from_str(&game_stake_time_result_event_record.game_id.clone()).unwrap()))
+                            .add(game::Column::SessionId.eq(game_stake_time_result_event_record.session_id.clone()))
+                        )
+                        .exec(&postgres_conn)
+                        .await;
                         println!("GameStakeTimeOver Event Settled");
                      }
                     } else {

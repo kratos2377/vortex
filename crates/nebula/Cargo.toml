@@ -41,6 +41,6 @@ async-trait = "0.1.79"
 opentelemetry = "0.22.0"
 tracing-opentelemetry = "0.23.0"
 nano-id = "0.3.3"
-redis = { version = "0.26.0" , features = ["tokio-comp" , "aio"] }
+redis = { version = "0.26.1" , features = ["tokio-comp" , "aio"] }
 reqwest = "0.12.12"
 crypter = "0.2.1"

@@ -26,13 +26,13 @@ services:
       - "6379:6379"
 
 
-
-  redisgamebet:
-    image: redis:latest
-    container_name: redisgamebet
-    command: sh -cx "redis-server --daemonize yes && redis-cli config set notify-keyspace-events KEx && sleep infinity"
-    ports:
-      - "6381:6381"
+# will create a new image for game bet events like stake and settle bet events
+  # redisgamebet:
+  #   image: redis:latest
+  #   container_name: redisgamebet
+  #   command: sh -cx "redis-server --daemonize yes && redis-cli config set notify-keyspace-events KEx && sleep infinity"
+  #   ports:
+  #     - "6381:6381"
 
   mongodbprim:
     image: mongo:latest

@@ -37,6 +37,16 @@ kafka:
         - create_user_bet
       client_id: create_user_bet.client.id
       group_id: create_user_bet.group.id
+    - id: stake_time_over
+      topic:
+        - stake_time_over
+      client_id: stake_time_over.client.id
+      group_id: stake_time_over.group.id
+    - id: stake_time_over_result
+      topic:
+        - stake_time_over_result
+      client_id: stake_time_over_result.client.id
+      group_id: stake_time_over_result.group.id
   producer:
     client_id:  nebula
     transactional_id: nebula-transactions

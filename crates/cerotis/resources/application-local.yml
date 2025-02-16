@@ -36,6 +36,11 @@ kafka:
         - user_score_update
       client_id: user_score_update.client.id
       group_id: user_score_update.group.id
+    - id: create_new_game_record
+      topic:
+        - create_new_game_record
+      client_id: create_new_game_record.client.id
+      group_id: create_new_game_record.group.id
   producer:
     client_id:  cerotis
     transactional_id: cerotis-transactions

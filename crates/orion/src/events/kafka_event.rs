@@ -52,6 +52,12 @@ pub struct UserGameDeletetionEvent {
 
 // Game Topic Kafka Events
 
+#[derive(Clone , Serialize , Deserialize , Debug)]
+pub struct CreateNewGamePayloadEvent {
+    pub game_id: String,
+    pub session_id: String,
+}
+
 #[derive(Clone , Serialize , Deserialize)]
 pub struct GameGeneralKafkaEvent {
     pub message: String,

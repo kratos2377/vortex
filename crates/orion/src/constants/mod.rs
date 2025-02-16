@@ -36,6 +36,8 @@ pub const EXECUTOR_GAME_OVER_STATUS_SETTLED: &str = "executor_game_over_staus_se
 pub const CREATE_USER_BET: &str = "create_user_bet";
 pub const USER_SCORE_UPDATE: &str = "user_score_update";
 pub const USER_GAME_DELETION: &str = "user_game_deletion";
+
+pub const CREATE_NEW_GAME_RECORD: &str = "create_new_game_record";
 pub const USER_GAME_EVENTS: &str = "user_game_events";
 pub const GENERATE_GAME_BET_EVENTS: &str = "generate_game_bet_events";
 pub const GAME_SESSION_COMPLETED: &str = "game_session_completed";

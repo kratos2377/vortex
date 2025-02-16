@@ -7,6 +7,7 @@ mod m20241123_171604_game_bets;
 mod m20250114_171855_create_session_in_game_bet;
 mod m20250125_214938_game_bets_alter;
 mod m20250215_062359_add_tables_in_game_bets;
+mod m20250216_090434_game;
 
 pub struct Migrator;
 
@@ -21,6 +22,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250114_171855_create_session_in_game_bet::Migration),
             Box::new(m20250125_214938_game_bets_alter::Migration),
             Box::new(m20250215_062359_add_tables_in_game_bets::Migration),
+            Box::new(m20250216_090434_game::Migration),
         ]
     }
 }

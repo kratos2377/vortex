@@ -5,13 +5,13 @@ use axum::{routing::get, Router};
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use mongodb::bson::{self, doc};
-use orion::{ constants::{CHESS_STATE_REDIS_KEY, CREATE_USER_BET, USER_GAME_DELETION, USER_GAME_EVENTS, USER_SCORE_UPDATE}, events::kafka_event::{GameBetEvent, UserGameBetEvent, UserGameDeletetionEvent}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
+use orion::{ constants::{CHESS_STATE_REDIS_KEY, CREATE_NEW_GAME_RECORD, CREATE_USER_BET, USER_GAME_DELETION, USER_GAME_EVENTS, USER_SCORE_UPDATE}, events::kafka_event::{CreateNewGamePayloadEvent, GameBetEvent, UserGameBetEvent, UserGameDeletetionEvent}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
 use redis::{AsyncCommands, RedisResult};
 use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, QueryFilter, Set, Value};
 use tokio::{spawn, task::JoinHandle};
 use tracing::{info, warn};
-use ton::models::{self, game_bets, users};
+use ton::models::{self, game, game_bets, users};
 use chrono::Utc;
 use uuid::Uuid;
 use sea_orm::ActiveModelTrait;
@@ -185,6 +185,24 @@ pub async fn do_listen(
             let payload = String::from_utf8(message.payload().unwrap().to_vec()).unwrap();
 
             match topic {
+                CREATE_NEW_GAME_RECORD => {
+
+                    let create_new_game_payload : CreateNewGamePayloadEvent = serde_json::from_str(&payload).unwrap();
+                    let new_game_record = game::ActiveModel {
+                        id: Set(Uuid::new_v4()),
+                        game_id: Set(Uuid::from_str(&create_new_game_payload.game_id).unwrap()),
+                        session_id: Set(create_new_game_payload.session_id.clone()),
+                        is_stake_allowed: Set(true)
+                    };
+                    println!("NewGameRecord generated");
+                    let res = new_game_record.insert(&postgres_conn).await;
+                    if res.is_err() {
+                        println!("Error while inserting new game record in DB");
+                        println!("{:?}" , res.err().unwrap());
+                    }
+                    
+
+                },
                 USER_GAME_DELETION => {
                     let user_game_deletion_event_res = serde_json::from_str(&payload);
                   if(user_game_deletion_event_res.is_ok()) {
