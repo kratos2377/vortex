@@ -5,7 +5,7 @@ use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
-use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, EXECUTOR_GAME_OVER_STATUS_SETTLED, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStatusChangeEvent, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
+use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, STAKE_TIME_OVER, STAKE_TIME_OVER_RESULT, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStakeTimeOverEventResult, GameStakeTimeRedisPayload, GameStatusChangeEvent, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
@@ -528,38 +528,57 @@ pub async fn do_listen(
                 },
 
 
-                EXECUTOR_GAME_OVER_STATUS_SETTLED => {
-                    let game_status_change_event = serde_json::from_str(&payload);
+                STAKE_TIME_OVER => {
+                    let game_stake_status_event = serde_json::from_str(&payload);
 
 
-                    if game_status_change_event.is_ok() {
-                        let game_status_change_event_record : GameStatusChangeEvent = game_status_change_event.unwrap();
+                    if game_stake_status_event.is_ok() {
+                        let game_status_change_event_record : orion::events::kafka_event::GameStakeTimeOverEvent = game_stake_status_event.unwrap();
 
-                        let redis_payload = GameSettleBetErrorRedisPayload {
+                        let redis_payload = GameStakeTimeRedisPayload {
                             game_id: game_status_change_event_record.game_id.clone(),
                             session_id: game_status_change_event_record.session_id.clone(),
-                            winner_id: game_status_change_event_record.winner_id.clone(),
-                            is_game_valid: game_status_change_event_record.is_game_valid.clone(),
                         };
 
 
-                        if game_status_change_event_record.is_error {            
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(30));
-                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_OVER_STATUS_KEY.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
-
-                        } else {
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
-                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
-                        }
-
-
-                        
-
+                    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(60));
+                    let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                
                     } else {
-                        println!("Error parsing game status change event");
+                        println!("Error parsing game stake time over event");
                     }
 
-                }
+                },
+
+                STAKE_TIME_OVER_RESULT => {
+                    let game_stake_time_result = serde_json::from_str(&payload);
+
+
+                    if game_stake_time_result.is_ok() {
+                        let game_stake_time_result_event_record : GameStakeTimeOverEventResult = game_stake_time_result.unwrap();
+
+                     if game_stake_time_result_event_record.is_error {
+
+
+                        let redis_payload = GameStakeTimeRedisPayload {
+                            game_id: game_stake_time_result_event_record.game_id.clone(),
+                            session_id: game_stake_time_result_event_record.session_id.clone(),
+                        };
+
+
+                    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(60));
+                    let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_stake_time_result_event_record.game_id + "_" + &game_stake_time_result_event_record.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                
+
+
+                     } else {
+                        println!("GameStakeTimeOver Event Settled");
+                     }
+                    } else {
+                        println!("Error parsing game stake time over event");
+                    }
+
+                },
 
                 _ => {
                     println!("No topics found")

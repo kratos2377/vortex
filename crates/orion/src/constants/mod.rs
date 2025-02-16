@@ -28,7 +28,10 @@ pub const MONGO_USER_TURNS_MODEL: &str = "user_turns";
 //Game Bet Related Kafka Topics
 pub const START_GAME_SETTLE_EVENT: &str = "start_game_settle_game_event";
 pub const GAME_OVER_EVENT: &str = "game_over_event";
+pub const STAKE_TIME_OVER: &str = "stake_time_over";
+pub const STAKE_TIME_OVER_RESULT: &str = "stake_time_over_result";
 pub const EXECUTOR_GAME_OVER_EVENT: &str = "executor_game_over_event";
+pub const EXECUTOR_GAME_STAKE_TIME_OVER_EVENT: &str = "executor_game_stake_time_over_event";
 pub const EXECUTOR_GAME_OVER_STATUS_SETTLED: &str = "executor_game_over_staus_settled";
 pub const CREATE_USER_BET: &str = "create_user_bet";
 pub const USER_SCORE_UPDATE: &str = "user_score_update";
@@ -44,3 +47,4 @@ pub const GAME_BET_SETTLED_ERROR: &str = "game_bet_settled_error";
 pub const SETTLE_BET_KEY: &str = "GameSettle_";
 pub const CHESS_STATE_REDIS_KEY: &str = "ChessState_";
 pub const GAME_OVER_STATUS_KEY: &str = "GameOver_";
+pub const GAME_STAKE_TIME_OVER: &str = "GameStakeTimeOver_";

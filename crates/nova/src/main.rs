@@ -4,7 +4,7 @@ use axum::{response::IntoResponse, routing::get, Router};
 use conf::config_types::{KafkaConfiguration, ServerConfiguration};
 use context::context::ContextImpl;
 use futures::{future, StreamExt};
-use orion::{constants::{EXECUTOR_GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY}, events::kafka_event::GenerateGameBetSettleEvents};
+use orion::{constants::{EXECUTOR_GAME_OVER_EVENT, EXECUTOR_GAME_STAKE_TIME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY}, events::kafka_event::GenerateGameBetSettleEvents};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use redis::{aio::{MultiplexedConnection, PubSub}, RedisResult};
 use serde_json::json;
@@ -149,7 +149,7 @@ pub async fn start_listening_to_key_events(
 ) -> JoinHandle<()> {
 
  let _ =  pubsub_conn.psubscribe(SETTLE_BET_KEY).await;
- let _ =  pubsub_conn.psubscribe(GAME_OVER_STATUS_KEY).await;
+ let _ =  pubsub_conn.psubscribe(GAME_STAKE_TIME_OVER).await;
 
 
  let kafka_producer_for_settle_events = kafka::producer::create_new_kafka_producer(kafka_config).unwrap();
@@ -172,8 +172,8 @@ pub async fn start_listening_to_key_events(
 
                        if pattern.contains(SETTLE_BET_KEY) {
                         let _ = publish_game_bet_events_for_settlement(&kafka_producer_for_settle_events, vec![payload]).await;
-                       } else if pattern.contains(GAME_OVER_STATUS_KEY) {
-                        let _ = publish_game_over_status_change_event(&kafka_producer_for_game_over_events, vec![payload]).await;
+                       } else if pattern.contains(GAME_STAKE_TIME_OVER) {
+                        let _ = publish_game_stake_time_over_event(&kafka_producer_for_game_over_events, vec![payload]).await;
                        }
 
 
@@ -222,8 +222,8 @@ pub async fn publish_game_bet_events_for_settlement(producer: &FutureProducer , 
 }
 
 
-pub async fn publish_game_over_status_change_event(producer: &FutureProducer , kafka_events: Vec<String>) -> Result<(), KafkaError> {
-    println!("PUBLISHING EVENTS FOR EXECUTOR_GAME_OVER topic");
+pub async fn publish_game_stake_time_over_event(producer: &FutureProducer , kafka_events: Vec<String>) -> Result<(), KafkaError> {
+    println!("PUBLISHING EVENTS FOR EXECUTOR_GAME_STAKE_TIME_OVER topic");
 
     producer.begin_transaction().unwrap();
 
@@ -233,9 +233,9 @@ pub async fn publish_game_over_status_change_event(producer: &FutureProducer , k
         
         let delivery_result = producer
         .send(
-            FutureRecord::to(EXECUTOR_GAME_OVER_EVENT)
+            FutureRecord::to(EXECUTOR_GAME_STAKE_TIME_OVER_EVENT)
                     .payload(&event)
-                    .key("executor_game_over"),
+                    .key("executor_game_stake_time_over"),
             Duration::from_secs(2),
         )
         .await;

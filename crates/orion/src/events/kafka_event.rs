@@ -155,6 +155,28 @@ pub struct GameStatusChangeEvent {
 
 
 #[derive(Clone , Serialize , Deserialize)]
+pub struct GameStakeTimeRedisPayload {
+    pub game_id: String,
+    pub session_id: String,
+}
+
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameStakeTimeOverEvent {
+    pub game_id: String,
+    pub session_id: String,
+}
+
+
+#[derive(Clone , Serialize , Deserialize)]
+pub struct GameStakeTimeOverEventResult {
+    pub game_id: String,
+    pub session_id: String,
+    pub is_error: bool
+}
+
+
+
+#[derive(Clone , Serialize , Deserialize)]
 pub struct GameBetSettleKafkaPayload {
     pub game_id: String,
     pub session_id: String,
