@@ -194,7 +194,6 @@ pub async fn do_listen(
                         session_id: Set(create_new_game_payload.session_id.clone()),
                         is_stake_allowed: Set(true)
                     };
-                    println!("NewGameRecord generated");
                     let res = new_game_record.insert(&postgres_conn).await;
                     if res.is_err() {
                         println!("Error while inserting new game record in DB");
@@ -209,7 +208,8 @@ pub async fn do_listen(
                     let user_game_deletion_event: UserGameDeletetionEvent = user_game_deletion_event_res.unwrap();
                     let _ = user_collection.delete_many(doc! { "game_id": user_game_deletion_event.game_id.clone()}, None).await;
                     let _ = game_collection.delete_many(doc! { "id": user_game_deletion_event.game_id.clone()}, None).await;
-                    let _ = user_turn_collection.delete_many(doc! { "game_id": user_game_deletion_event.game_id}, None).await;
+                    let _ = user_turn_collection.delete_many(doc! { "game_id": user_game_deletion_event.game_id.clone()}, None).await;
+                    let _: RedisResult<()> = redis_conn.del(CHESS_STATE_REDIS_KEY.to_owned() + &user_game_deletion_event.game_id).await;
                   }
                 },
                 USER_SCORE_UPDATE => {
