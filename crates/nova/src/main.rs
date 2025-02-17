@@ -148,8 +148,10 @@ pub async fn start_listening_to_key_events(
     kafka_config: &KafkaConfiguration
 ) -> JoinHandle<()> {
 
- let _ =  pubsub_conn.psubscribe(SETTLE_BET_KEY).await;
- let _ =  pubsub_conn.psubscribe(GAME_STAKE_TIME_OVER).await;
+ let _ =  pubsub_conn .psubscribe("__keyspace@*__:*")
+        .await
+        .expect("Failed to subscribe to redis channel");
+// let _ =  pubsub_conn.psubscribe(GAME_STAKE_TIME_OVER).await;
 
 
  let kafka_producer_for_settle_events = kafka::producer::create_new_kafka_producer(kafka_config).unwrap();
@@ -165,7 +167,7 @@ pub async fn start_listening_to_key_events(
           if message_stream.is_some() {
             println!("Reccieved some message from redis pubsub");
             let new_message = message_stream.unwrap();
-            
+            println!("New message is: {:?}" ,new_message);
             let payload: String= new_message.get_payload().unwrap();
             let pattern: String = new_message.get_pattern().unwrap();
 
