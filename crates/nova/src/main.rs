@@ -150,7 +150,10 @@ pub async fn start_listening_to_key_events(
 
  let _ =  pubsub_conn .psubscribe("__keyspace@*__:*")
         .await
-        .expect("Failed to subscribe to redis channel");
+        .expect("Failed to subscribe to redis keyspace channel");
+    let _ = pubsub_conn .psubscribe("__keyevent@*__:*")
+    .await
+    .expect("Failed to subscribe to redis keyevent channel");
 // let _ =  pubsub_conn.psubscribe(GAME_STAKE_TIME_OVER).await;
 
 
