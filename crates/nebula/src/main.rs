@@ -282,6 +282,8 @@ pub async fn do_listen(
                                 let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
                                 let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                            
+                            } else {
+                                println!("No events for this game_id={} session_id={} found which are in-progress" , game_bet_res_model.game_id.clone() , game_bet_res_model.session_id.clone());
                             }
     
                         }

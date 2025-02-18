@@ -27,20 +27,12 @@ async fn main()-> Result<(), Box<dyn std::error::Error>>  {
     let config = conf::configuration::Configuration::load().unwrap();
     //  dotenv().ok();
   
-      
-
+    
       let mut client = redis::Client::open(config.redis.url).unwrap();
       let mut async_pubsub_conn = client.get_async_pubsub().await.unwrap();
 
 
-
-
-
-
-
       let publishing_events_join_handle = init_redis_pubsub_and_produce_events( async_pubsub_conn , &config.kafka ).await;
-
-      
 
   
       start_web_server(&config.server , vec![publishing_events_join_handle])
@@ -151,9 +143,6 @@ pub async fn start_listening_to_key_events(
  let _ =  pubsub_conn .psubscribe("__keyspace@*__:*")
         .await
         .expect("Failed to subscribe to redis keyspace channel");
-    let _ = pubsub_conn .psubscribe("__keyevent@*__:*")
-    .await
-    .expect("Failed to subscribe to redis keyevent channel");
 // let _ =  pubsub_conn.psubscribe(GAME_STAKE_TIME_OVER).await;
 
 
@@ -172,12 +161,13 @@ pub async fn start_listening_to_key_events(
             let new_message = message_stream.unwrap();
             println!("New message is: {:?}" ,new_message);
             let payload: String= new_message.get_payload().unwrap();
-            let pattern: String = new_message.get_pattern().unwrap();
+            println!("Payload is: {:?}" , payload.clone());
+            let expired_key_channel: String = new_message.get_channel().unwrap();
 
 
-                       if pattern.contains(SETTLE_BET_KEY) {
+                       if expired_key_channel.contains(SETTLE_BET_KEY) {
                         let _ = publish_game_bet_events_for_settlement(&kafka_producer_for_settle_events, vec![payload]).await;
-                       } else if pattern.contains(GAME_STAKE_TIME_OVER) {
+                       } else if expired_key_channel.contains(GAME_STAKE_TIME_OVER) {
                         let _ = publish_game_stake_time_over_event(&kafka_producer_for_game_over_events, vec![payload]).await;
                        }
 
