@@ -15,9 +15,9 @@ use super::payload::{PlaceUserBetPayload, UpdateUserPlaceBetPayload};
 
 pub async fn get_user_bets(
     state: State<AppDBState>,
-    page: Query<u64>,
     user_id: Query<String>,
     wallet_key: Query<String>,
+    page: Query<u64>,
 ) -> APIResult<Json<Value>> {
 
 if user_id.0 == "" || wallet_key.0 == "" {
