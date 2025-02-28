@@ -61,11 +61,11 @@ impl Entity {
         Self::find().filter(Column::GameId.eq(game_id))
     }
 
-    pub fn find_by_user_id_and_game_name(game_name: String ,  user_id: Uuid) -> Select<Entity> {
+    pub fn find_by_user_id_and_wallet_key(wallet_key: String ,  user_id: Uuid) -> Select<Entity> {
         Self::find().filter(
             Condition::all()
             .add(Column::UserId.eq(user_id))
-            .add(Column::GameName.eq(game_name))
+            .add(Column::EncryptedWallet.eq(wallet_key))
         )
     }
 
