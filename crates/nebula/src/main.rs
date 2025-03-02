@@ -325,14 +325,14 @@ pub async fn do_listen(
 
                         let mut game_bets = if game_over_event_model.is_game_valid {
                             game_bets::Entity::find_by_game_id_and_session_id_with_progress_not_equal_to_winner_id(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
-                        game_over_event_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await
+                        game_over_event_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).all(&postgres_conn).await
                   
                         } else {
                             // If not valid only player with issue must be settle rest should be compensated
-                            //TODO
-                            //Change winner id to player id by sending one more keyfield. This will require model change and adding change in vortex-pub-sub as well
-                            game_bets::Entity::find_by_game_id_and_session_id_for_invalid_game(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
-                        game_over_event_model.session_id.clone()  , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await
+                           // This func will return Player who is not the winner
+                           // in this case it means it will return the player because of whom the game became invalid
+                            game_bets::Entity::find_invalid_user_by_game_id_and_session_id_for_invalid_game(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
+                        game_over_event_model.session_id.clone()  , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).all(&postgres_conn).await
                         };
                     if game_bets.is_err() {
                         error!("Error while fetching GameBets")
@@ -341,27 +341,17 @@ pub async fn do_listen(
                         
                         if game_bets_vec.len() > 0 {
                             let mut records_ids = vec![];
-                            let mut kafka_game_events_vec = vec![];
+                        
     
                             for bet in game_bets_vec {
                                 records_ids.push(bet.id.clone());
     
-                                let kafka_game_bet_payload = GameBetSettleKafkaPayload {
-                                    game_id: bet.game_id.to_string().clone(),
-                                    session_id: bet.session_id.clone(),
-                                    winner_id: game_over_event_model.winner_id.clone(),
-                                    user_id: bet.user_id.to_string().clone(),
-                                    user_betting_on: bet.user_id_betting_on.to_string().clone(),
-                                    record_id: bet.id.to_string(),
-                                    user_wallet_key: bet.encrypted_wallet,
-                                    is_valid: game_over_event_model.is_game_valid,
-                                };
-    
-                                kafka_game_events_vec.push(kafka_game_bet_payload);
-                            }
+                               }
     
                             let _ = game_bets::Entity::update_many()
                                         .col_expr(game_bets::Column::Status, Expr::value(GameBetStatus::Settled.to_string()))
+                                        .col_expr(game_bets::Column::IsGameValid, Expr::value(game_over_event_model.is_game_valid))
+                                        .col_expr(game_bets::Column::WonStatus, Expr::value(false))
                                         .filter(
                                             Condition::all()
                                             .add(game_bets::Column::Id.is_in(records_ids))
@@ -496,6 +486,8 @@ pub async fn do_listen(
                                 created_at: Set(Utc::now().naive_utc()),
                                 updated_at: Set(Utc::now().naive_utc()),
                                 is_player: Set(user_game_bet_model.is_player),
+                                is_game_valid: Set(true),
+                                won_status: Set(false),
                             };
                             println!("UserGameBetEvent generated");
                             let res = new_bet.insert(&postgres_conn).await;

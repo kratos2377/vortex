@@ -16,6 +16,10 @@ pub struct Model {
     pub status: String,
     pub encrypted_wallet: String,
     pub is_player: bool,
+    pub is_game_valid: bool,
+    //If is_game_valid is true , won_status will represent if user won the game or not
+    // if is_game_valid is false , won_status will be true for everyone except the player who lost the connection
+    pub won_status: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }
@@ -119,12 +123,13 @@ impl Entity {
         )
     }
 
-    pub fn find_by_game_id_and_session_id_for_invalid_game(game_id: Uuid ,  session_id: String , player_id: Uuid) -> Select<Entity> {
+    pub fn find_invalid_user_by_game_id_and_session_id_for_invalid_game(game_id: Uuid ,  session_id: String , player_id: Uuid) -> Select<Entity> {
         Self::find().filter(
             Condition::all()
             .add(Column::GameId.eq(game_id))
             .add(Column::SessionId.eq(session_id))
-            .add(Column::UserId.eq(player_id))
+            .add(Column::IsPlayer.eq(true))
+            .add(Column::UserId.ne(player_id))
         )
     }
     
