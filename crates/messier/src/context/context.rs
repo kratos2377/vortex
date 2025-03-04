@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use mongodb::Client;
-use redis::Connection;
+use redis::{aio::MultiplexedConnection, Connection};
 use sea_orm::DatabaseConnection;
 
 
@@ -10,21 +10,21 @@ pub type DynContext = Arc<dyn Context>;
 
 pub trait Context: Sync + Send {
     fn get_mongo_db_client(&self) -> Arc<Client>;
-    fn get_redis_db_client(&self) -> Arc<Mutex<Connection>>;
+    fn get_redis_db_client(&self) -> MultiplexedConnection;
     fn get_postgres_db_client(&self) -> DatabaseConnection;
 }
 
 #[derive(Clone)]
 pub struct ContextImpl {
     pub mongo_db_client: Arc<Client>,
-    pub redis_db_client: Arc<Mutex<Connection>>,
+    pub redis_db_client: MultiplexedConnection,
     pub postgres_db_client: DatabaseConnection,
 }
 
 impl ContextImpl {
     pub fn new_dyn_context(
         mongo_db_client: Arc<Client>,
-        redis_db_client: Arc<Mutex<Connection>>,
+        redis_db_client: MultiplexedConnection,
         postgres_db_client: DatabaseConnection,
     ) -> DynContext {
         let context = ContextImpl {
@@ -43,7 +43,7 @@ impl Context for ContextImpl {
     }
 
 
-    fn get_redis_db_client(&self) -> Arc<Mutex<Connection>> {
+    fn get_redis_db_client(&self) -> MultiplexedConnection {
         self.redis_db_client.clone()
     }
 

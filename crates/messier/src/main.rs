@@ -6,6 +6,7 @@ use sea_orm::Database;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
+use tracing::info;
 use crate::{conf::configuration, context::context::ContextImpl, state::AppDBState};
 
 
@@ -20,12 +21,15 @@ pub mod context;
 pub mod utils;
 pub mod conf;
 pub mod event_producer;
+pub mod logging_tracing;
 pub mod mongo_pool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let config = configuration::Configuration::load().unwrap();
   //  dotenv().ok();
+
+  logging_tracing::init(&config)?;
 
     //Connect with database
     let connection = match Database::connect(config.postgres_url.url).await {
@@ -36,13 +40,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     Migrator::up(&connection, None).await?;
 
     let client = redis::Client::open(config.redis_url.url).unwrap();
-    let redis_connection = client.get_connection().unwrap(); 
+    let redis_connection = client.get_multiplexed_async_connection().await.unwrap(); 
     let mongo_db_client = Arc::new(mongo_pool::init_db_client(&config.mongo_db).await.unwrap());
 
 
     let context = ContextImpl::new_dyn_context(
         mongo_db_client,
-        Arc::new(Mutex::new(redis_connection)),
+        redis_connection,
         connection.clone()
     );
 
@@ -67,8 +71,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3004")
         .await
         .unwrap();
-    println!("listening on {}", listener.local_addr().unwrap());
+    info!("starting messier service on port {}", listener.local_addr().unwrap());
     axum::serve(listener, routes_all).await.unwrap();
 
+    opentelemetry::global::shutdown_tracer_provider();
     Ok(())
 }

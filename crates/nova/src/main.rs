@@ -19,6 +19,7 @@ pub mod conf;
 pub mod context;
 pub mod kafka;
 pub mod utils;
+pub mod logging_tracing;
 
 
 #[tokio::main]
@@ -26,7 +27,7 @@ async fn main()-> Result<(), Box<dyn std::error::Error>>  {
 
     let config = conf::configuration::Configuration::load().unwrap();
     //  dotenv().ok();
-  
+    logging_tracing::init(&config)?;
     
       let mut client = redis::Client::open(config.redis.url).unwrap();
       let mut async_pubsub_conn = client.get_async_pubsub().await.unwrap();

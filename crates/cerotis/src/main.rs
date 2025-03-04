@@ -22,12 +22,15 @@ pub mod api;
 pub mod context;
 pub mod mongo_pool;
 pub mod fen_update;
+pub mod logging_tracing;
 
 
 
 #[tokio::main]
 async fn main()  {
     let config = conf::configuration::Configuration::load().unwrap();
+
+    logging_tracing::init(&config).unwrap();
 
     let consumers = kafka::consumer::init_consumers(&config.kafka).unwrap();
     

@@ -3,7 +3,7 @@ use std::{env, sync::atomic::AtomicU16};
 use config::{Config, ConfigError, File};
 use serde::Deserialize;
 use std::sync::atomic::Ordering::SeqCst;
-use super::config_types::{ KafkaConfiguration, RedisConfiguration, ServerConfiguration};
+use super::config_types::{ KafkaConfiguration, LoggingConfiguration, RedisConfiguration, ServerConfiguration};
 
 
 pub static SERVER_PORT: AtomicU16 = AtomicU16::new(0);
@@ -12,7 +12,8 @@ pub static SERVER_PORT: AtomicU16 = AtomicU16::new(0);
 pub struct Configuration {
     pub server: ServerConfiguration,
     pub kafka: KafkaConfiguration,
-    pub redis: RedisConfiguration
+    pub redis: RedisConfiguration,
+    pub logging: LoggingConfiguration
 }
 
 impl Configuration {

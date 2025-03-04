@@ -51,6 +51,16 @@ kafka:
         topic_name: user_game_deletion
         partitions: 2
 
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: messier
+        level: info
+      - namespace: messier::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug
 
 email_config:
   smtp_key: xsmtpsib-bab861626683efa1e7004721c9ab4b7dacb02047d0baf8e7ac597ac3948a5d82-RqtyNxzMn0v745TI

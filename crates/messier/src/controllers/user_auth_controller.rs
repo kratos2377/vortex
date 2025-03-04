@@ -14,7 +14,8 @@ use axum::Json;
 use argon2::{self, Config};
 use chrono::Utc;
 use lazy_regex::Regex;
-use redis::{Commands, Connection, RedisResult, SetOptions};
+use redis::aio::MultiplexedConnection;
+use redis::{AsyncCommands, Commands, Connection, RedisResult, SetOptions};
 use ton::models::users::{self , Entity as Users};
 use errors::Result;
 use sea_orm::ActiveModelTrait;
@@ -25,6 +26,7 @@ use sea_orm::TryIntoModel;
 use serde_json::json;
 use serde_json::Value;
 use tower_cookies::Cookies;
+use tracing::info;
 use uuid::Uuid;
 
 use super::payloads::{LoginPayload, RegistrationPayload, SendEmailPayload, VerifyTokenPayload, VerifyUserPayload};
@@ -36,6 +38,7 @@ pub async fn verify_token(
 ) -> Result<Json<Value>> {
 
     if payload.token == "" {
+        info!("No token found in the payload");
         return Err(Error::MissingParamsError)
      }
 
@@ -50,6 +53,7 @@ pub async fn verify_token(
      let user_data = Users::find_by_id(Uuid::from_str(&token_data.claims.user_id).unwrap()).one(&state.conn).await.unwrap();
 
      if user_data.is_none() {
+        info!("No user found for token={:?}" , payload.token);
         return Err(Error::NoUserEntityFoundForToken)
      }
 
@@ -79,6 +83,7 @@ pub async fn login_user(
 
     let user_found;
     if payload.usernameoremail.contains("@") {
+        info!("Searching user using email for email={}" , payload.usernameoremail);
       let user = Users::find_by_email(&payload.usernameoremail).one(&state.conn).await.unwrap();
 
       if let Some(user) = user {
@@ -87,6 +92,7 @@ pub async fn login_user(
         return Err(Error::EntityNotFound)
       }
     } else {
+        info!("Searching user using username for username={}" , payload.usernameoremail);
         let user = Users::find_by_username(&payload.usernameoremail).one(&state.conn).await.unwrap();
 
         if let Some(user) = user {
@@ -97,6 +103,7 @@ pub async fn login_user(
     }
 
     if !verify_password(user_found.password , payload.pwd.clone()) {
+        info!("Invalid password for usernameoremail={}" , payload.usernameoremail);
         return Err(Error::PasswordIncorrect)
     }
 
@@ -108,7 +115,7 @@ pub async fn login_user(
     let generated_jwt_token = encode_jwt(user_found.id.to_string())
     .map_err(|_| APIError { message: "Failed while Creating JWT token".to_owned(), status_code: StatusCode::UNAUTHORIZED, error_code: Some(41) }).unwrap();
 
-
+    info!("Verified credentials for usernameoremail={}" , payload.usernameoremail);
     let body = Json(json!({
 		"result": {
 			"success": true
@@ -208,15 +215,16 @@ pub async fn send_email(
     state: State<AppDBState>,
 	Json(payload): Json<SendEmailPayload>,
 ) -> Result<Json<Value>> {
+    info!("Generating code for user_id={}" , payload.id.clone());
     let rand_code = utils::generate_random_string::generate_random_string(6);
-    let redis_connection  = state.context.get_redis_db_client();
-    let mut rc = redis_connection.lock().unwrap();
+    let mut redis_connection  = state.context.get_redis_db_client();
 
     let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
-   let redis_rsp: RedisResult<()> =  rc.set_options(payload.id + "-email-key", rand_code.clone(), opts);
+   let redis_rsp: RedisResult<()> =  redis_connection.set_options(payload.id.clone() + "-email-key", rand_code.clone(), opts).await;
 
 
    if redis_rsp.is_err() {
+    info!("Error while persisting generated code key in redis for user_id={}" , payload.id.clone());
     return Err(Error::FailedToSetRedisKeyWithOptions)
    }
 
@@ -249,7 +257,11 @@ match mailer.send(&email) {
         Ok(body)
     
     },
-    Err(e) => Err(Error::SendEmailError),
+    Err(e) => {
+
+        info!("Error while sending verification code email to user_id={:?}" , payload.id.clone());
+        Err(Error::SendEmailError)
+    },
 }
 }
 
@@ -263,9 +275,10 @@ pub async fn verify_user(
     }
 
 
-    let user_key_from_redis_rs= get_key_from_redis(payload.id.to_string() + "-email-key", state.context.get_redis_db_client());
+    let user_key_from_redis_rs= get_key_from_redis(payload.id.clone().to_string() + "-email-key", state.context.get_redis_db_client()).await;
 
     if user_key_from_redis_rs.is_err() {
+        info!("Failed to get verification key from redis for user_id={}" , payload.id.clone());
         return Err(Error::FailedToGetKeyFromRedis)
     }
 
@@ -281,6 +294,7 @@ pub async fn verify_user(
      let mut user_recieved = if let Some(user) = user {
         user
      } else {
+        info!("Failed to get user from postgres for user_id={}" , payload.id.clone());
         return Err(Error::EntityNotFound)
     };
 
@@ -303,6 +317,7 @@ pub async fn verify_user(
     let rsp = user_active_model.save(&state.conn).await;
 
     if rsp.is_err() {
+        info!("Failed to verify user for user_id={}" , payload.id.clone());
         return Err(Error::FailedToVerifyUser)
     }
     let body = Json(json!({
@@ -339,10 +354,9 @@ fn validate_user_payload(payload: &RegistrationPayload) -> bool {
     return true
 }
 
-pub fn get_key_from_redis(key: String, redis_connection: Arc<Mutex<Connection>>) -> RedisResult<String> {
+pub async fn get_key_from_redis(key: String,mut  redis_connection: MultiplexedConnection) -> RedisResult<String> {
    
-    let mut rc = redis_connection.lock().unwrap();
 
-    let user_key_from_redis_rs: RedisResult<String> = rc.get(key);
+    let user_key_from_redis_rs: RedisResult<String> = redis_connection.get(key).await;
     user_key_from_redis_rs
 }

@@ -35,3 +35,5 @@ opentelemetry = "0.22.0"
 tracing-opentelemetry = "0.23.0"
 nano-id = "0.3.3"
 redis = { version = "0.26.1" , features = ["tokio-comp" , "aio"] }
+anyhow = "1.0.66"
+common-tracing = {path = "../common-tracing"}

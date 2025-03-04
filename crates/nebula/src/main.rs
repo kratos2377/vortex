@@ -32,12 +32,15 @@ pub mod state;
 pub mod errors;
 pub mod kafka;
 pub mod context;
+pub mod logging_tracing;
 
 
 #[tokio::main]
 async fn main()-> Result<(), Box<dyn std::error::Error>>  {
 
     let config = conf::configuration::Configuration::load().unwrap();
+
+    logging_tracing::init(&config)?;
     //  dotenv().ok();
   
       //Connect with database

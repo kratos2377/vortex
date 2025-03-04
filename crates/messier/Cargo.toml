@@ -49,7 +49,6 @@ mongodb = { version = "2.8.2" , features = ["zstd-compression", "snappy-compress
 config = "0.14.0"
 futures = "0.3.30"
 async-trait = "0.1.79"
-schema_registry_converter = { git = "https://github.com/gklijs/schema_registry_converter", branch = "main", features = ["avro"] }
 serde_derive = "1.0.197"
 bson = { version = "2.4.0", features = ["uuid-1", "serde_with"] }
 murmur3 = "0.5.2"
@@ -57,3 +56,5 @@ opentelemetry = "0.22.0"
 tracing-opentelemetry = "0.23.0"
 rand = "0.8.5"
 nano-id = "0.3.3"
+anyhow = "1.0.66"
+common-tracing = {path = "../common-tracing"}
