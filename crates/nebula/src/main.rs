@@ -5,7 +5,7 @@ use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
-use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, STAKE_TIME_OVER, STAKE_TIME_OVER_RESULT, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStakeTimeOverEventResult, GameStakeTimeRedisPayload, GameStatusChangeEvent, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
+use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GAME_STAKE_TIME_OVER_DATA, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, SETTLE_BET_KEY_DATA, STAKE_TIME_OVER, STAKE_TIME_OVER_RESULT, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStakeTimeOverEventResult, GameStakeTimeRedisPayload, GameStatusChangeEvent, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
@@ -260,6 +260,8 @@ pub async fn do_listen(
         
                                 let _ = game_bets::Entity::update_many()
                                             .col_expr(game_bets::Column::Status, Expr::value(GameBetStatus::ToSettle.to_string()))
+                                            .col_expr(game_bets::Column::IsGameValid, Expr::value(game_bet_res_model.is_game_valid))
+                                            .col_expr(game_bets::Column::WonStatus, Expr::value(true))
                                             .filter(
                                                 Condition::all()
                                                 .add(game_bets::Column::Id.is_in(records_ids))
@@ -286,7 +288,8 @@ pub async fn do_listen(
                                 let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                            
                             } else {
-                                println!("No events for this game_id={} session_id={} found which are in-progress" , game_bet_res_model.game_id.clone() , game_bet_res_model.session_id.clone());
+                                info!("No events for this game_id={} session_id={} found which are in-progress" , game_bet_res_model.game_id.clone() , game_bet_res_model.session_id.clone());
+                                let redis_rsp: RedisResult<()> =  redis_conn.del(SETTLE_BET_KEY_DATA.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id).await;
                             }
     
                         }
@@ -301,7 +304,7 @@ pub async fn do_listen(
 
                             let mut redis_conn = context.get_redis_connection();
 
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
                             let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                         }
                   
@@ -369,6 +372,49 @@ pub async fn do_listen(
                         
                     }
 
+
+                    let game_rec = game::Entity::find_by_game_id_and_session_id(Uuid::parse_str(&game_over_event_model.game_id.clone()).unwrap(), 
+                    game_over_event_model.session_id.clone()).one(&postgres_conn).await.unwrap();
+
+
+                    if let Some(game_rec_val) = game_rec {
+                        if game_rec_val.is_stake_allowed {
+                            // If this is true means the game time was < 5 mins or the transaction has not been updated yet
+                            // In either case we will set redis key
+
+
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(60));
+                            let redis_game_over_payload = GameStakeTimeRedisPayload {
+                                game_id: game_over_event_model.game_id.clone(),
+                                session_id: game_over_event_model.session_id.clone(),
+                            };
+                            let redis_game_stake_time_over_data_rsp: RedisResult<()> =  redis_conn.set(GAME_STAKE_TIME_OVER_DATA.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_game_over_payload).unwrap()).await;
+                      
+                            //First we will save GameOverKey as we have to change game over status first before generating game bet settle events
+                            let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, "game-over-event" ,opts).await;
+                       
+                            if redis_rsp.is_err() {
+                                println!("Error while putting adding redis key for game over status");
+                            } else {
+                                println!("Successfully added keys in redis for GameBetSettle");
+                            }
+
+                        }
+                    } else {
+                        // If stake is false it means stake over status change transaction already happen we can start with bet settle events
+
+
+                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                     
+                        let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, "game-over-event" ,opts).await;
+                   
+                        if redis_rsp.is_err() {
+                            println!("Error while putting adding redis key for game over status");
+                        } else {
+                            println!("Successfully added keys in redis for GameBetSettle");
+                        }
+                    }
+
                     // Storing game over status key in redis. Nova crate will listenm to GameOverStatus keys as well                    
                         let redis_payload = GameSettleBetErrorRedisPayload {
                             game_id: game_over_event_model.game_id.clone(),
@@ -380,16 +426,9 @@ pub async fn do_listen(
                         let mut redis_conn = context.get_redis_connection();
 
                         println!("Got redis conn and setting keys");
-                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(10));
-
-                        //First we will save GameOverKey as we have to change game over status first before generating game bet settle events
-                        let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
-                   
-                        if redis_rsp.is_err() {
-                            println!("Error while putting adding redis key for game over status");
-                        } else {
-                            println!("Successfully added keys in redis for GameBetSettle");
-                        }
+                        //These two will store data and will be used to fetch data from redis when SETTLE_BET_KEY and GAME_STAKE_TIME keys expire
+                        let redis_settle_bet_data_rsp: RedisResult<()> =  redis_conn.set(SETTLE_BET_KEY_DATA.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap()).await;
+                      
                     }
 
                 },
@@ -460,7 +499,7 @@ pub async fn do_listen(
                             };
 
 
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(300));
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
                             let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                         }
                     }
@@ -552,7 +591,8 @@ pub async fn do_listen(
             
             
                                 let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(60));
-                                let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id.clone(), serde_json::to_string(&redis_payload).unwrap() ,opts).await;
+                                let redis_game_stake_time_over_data_rsp: RedisResult<()> =  redis_conn.set(GAME_STAKE_TIME_OVER_DATA.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id.clone(), serde_json::to_string(&redis_payload).unwrap()).await;
+                                let redis_rsp: RedisResult<()> =  redis_conn.set_options(GAME_STAKE_TIME_OVER.to_string() + &game_status_change_event_record.game_id + "_" + &game_status_change_event_record.session_id.clone(), "game-stake-time-over" ,opts).await;
                                 }
                             }
 
@@ -595,6 +635,8 @@ pub async fn do_listen(
                         )
                         .exec(&postgres_conn)
                         .await;
+                    let redis_rsp: RedisResult<()> =  redis_conn.del(GAME_STAKE_TIME_OVER_DATA.to_string() + &game_stake_time_result_event_record.game_id + "_" + &game_stake_time_result_event_record.session_id).await;
+                
                         println!("GameStakeTimeOver Event Settled");
                      }
                     } else {

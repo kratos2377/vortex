@@ -4,9 +4,9 @@ use axum::{response::IntoResponse, routing::get, Router};
 use conf::config_types::{KafkaConfiguration, ServerConfiguration};
 use context::context::ContextImpl;
 use futures::{future, StreamExt};
-use orion::{constants::{EXECUTOR_GAME_OVER_EVENT, EXECUTOR_GAME_STAKE_TIME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY}, events::kafka_event::GenerateGameBetSettleEvents};
+use orion::{constants::{EXECUTOR_GAME_OVER_EVENT, EXECUTOR_GAME_STAKE_TIME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GAME_STAKE_TIME_OVER_DATA, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, SETTLE_BET_KEY_DATA}, events::kafka_event::GenerateGameBetSettleEvents};
 use rdkafka::{error::KafkaError, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
-use redis::{aio::{MultiplexedConnection, PubSub}, RedisResult};
+use redis::{aio::{MultiplexedConnection, PubSub}, AsyncCommands, RedisResult};
 use serde_json::json;
 use tokio::task::JoinHandle;
 use tower::ServiceBuilder;
@@ -30,10 +30,11 @@ async fn main()-> Result<(), Box<dyn std::error::Error>>  {
     logging_tracing::init(&config)?;
     
       let mut client = redis::Client::open(config.redis.url).unwrap();
+      let mut redis_conn = client.get_multiplexed_async_connection().await.unwrap();
       let mut async_pubsub_conn = client.get_async_pubsub().await.unwrap();
 
 
-      let publishing_events_join_handle = init_redis_pubsub_and_produce_events( async_pubsub_conn , &config.kafka ).await;
+      let publishing_events_join_handle = init_redis_pubsub_and_produce_events(redis_conn ,  async_pubsub_conn , &config.kafka ).await;
 
   
       start_web_server(&config.server , vec![publishing_events_join_handle])
@@ -110,11 +111,12 @@ pub async fn shutdown_signal(shutdown_handles: Vec<JoinHandle<()>>) {
 }
 
 
-pub async fn init_redis_pubsub_and_produce_events(pubsub_conn: PubSub , kafka_config: &KafkaConfiguration) -> JoinHandle<()> {
+pub async fn init_redis_pubsub_and_produce_events(redis_conn: MultiplexedConnection ,  pubsub_conn: PubSub , kafka_config: &KafkaConfiguration) -> JoinHandle<()> {
 
     let mut kafka_joins: Vec<JoinHandle<()>> = vec![];
 
        let kf_join =  start_listening_to_key_events(
+        redis_conn,
             pubsub_conn,
             kafka_config
         ).await;
@@ -137,6 +139,7 @@ pub async fn init_redis_pubsub_and_produce_events(pubsub_conn: PubSub , kafka_co
 
 
 pub async fn start_listening_to_key_events(
+    redis_conn: MultiplexedConnection,
     mut pubsub_conn: PubSub,
     kafka_config: &KafkaConfiguration
 ) -> JoinHandle<()> {
@@ -160,16 +163,24 @@ pub async fn start_listening_to_key_events(
           if message_stream.is_some() {
             println!("Reccieved some message from redis pubsub");
             let new_message = message_stream.unwrap();
-            println!("New message is: {:?}" ,new_message);
-            let payload: String= new_message.get_payload().unwrap();
-            println!("Payload is: {:?}" , payload.clone());
             let expired_key_channel: String = new_message.get_channel().unwrap();
 
 
                        if expired_key_channel.contains(SETTLE_BET_KEY) {
-                        let _ = publish_game_bet_events_for_settlement(&kafka_producer_for_settle_events, vec![payload]).await;
+                        let redis_payload = get_redis_payload_for_key(redis_conn.clone() , SETTLE_BET_KEY , expired_key_channel).await;
+
+                        if let Some(redis_payload_val) = redis_payload {
+                            
+                        let _ = publish_game_bet_events_for_settlement(&kafka_producer_for_settle_events, vec![redis_payload_val]).await;
+                        }
                        } else if expired_key_channel.contains(GAME_STAKE_TIME_OVER) {
-                        let _ = publish_game_stake_time_over_event(&kafka_producer_for_game_over_events, vec![payload]).await;
+                        
+                        let redis_payload = get_redis_payload_for_key(redis_conn.clone() , GAME_STAKE_TIME_OVER , expired_key_channel).await;
+
+                        if let Some(redis_payload_val) = redis_payload {
+                            
+                        let _ = publish_game_stake_time_over_event(&kafka_producer_for_game_over_events, vec![redis_payload_val]).await;
+                        }
                        }
 
 
@@ -178,7 +189,42 @@ pub async fn start_listening_to_key_events(
     })
 }
 
+pub async fn get_redis_payload_for_key(mut redis_conn: MultiplexedConnection , key_type: &str , input: String) -> Option<String> {
+    // Need to fix this fn to get key value from key argument and then get actual redis value
 
+    let key_id =    input.split(':')
+    .last()
+    // Split the last part by '_' and get the full remainder after the first part
+    .and_then(|last_part| {
+        // Split by '_' 
+        let parts: Vec<&str> = last_part.split('_').collect();
+        
+        // If there are at least two parts, return everything after the first part
+        if parts.len() > 1 {
+            Some(parts[1..].join("_"))
+        } else {
+            None
+        }
+    }).unwrap();
+
+
+    println!("The Key id is: {:?}" , key_id);
+
+    let key = if key_type.eq(SETTLE_BET_KEY) {
+            SETTLE_BET_KEY_DATA.to_string() + &key_id
+    } else {
+        GAME_STAKE_TIME_OVER_DATA.to_string() + &key_id
+    };
+
+    let key_res: RedisResult<String> = redis_conn.get(key).await;
+
+    if key_res.is_err() {
+        return None
+    }
+
+    return Some(key_res.unwrap())
+
+}
 
 pub async fn publish_game_bet_events_for_settlement(producer: &FutureProducer , kafka_events: Vec<String>) -> Result<(), KafkaError> {
     println!("PUBLISHING EVENTS FOR GAME_BET_GENERATE_EVENTS topic");

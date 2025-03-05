@@ -50,3 +50,7 @@ pub const SETTLE_BET_KEY: &str = "GameSettle_";
 pub const CHESS_STATE_REDIS_KEY: &str = "ChessState_";
 pub const GAME_OVER_STATUS_KEY: &str = "GameOver_";
 pub const GAME_STAKE_TIME_OVER: &str = "GameStakeTimeOver_";
+
+// Redis keys for data
+pub const SETTLE_BET_KEY_DATA: &str = "GameSettleData_";
+pub const GAME_STAKE_TIME_OVER_DATA: &str = "GameStakeTimeOverData_";
