@@ -229,8 +229,14 @@ pub async fn do_listen(
 
 
 
-                            let mut game_bets = game_bets::Entity::find_by_game_id_and_session_id_with_progress_with_winner_id(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
-                            game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_bet_res_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await;
+                            let mut game_bets = if !game_bet_res_model.winner_id.is_empty() {
+                                game_bets::Entity::find_by_game_id_and_session_id_with_progress_with_winner_id(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
+                                game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_bet_res_model.winner_id).unwrap()).limit(2000).all(&postgres_conn).await
+                            } else {
+                                //stalemate case
+                                game_bets::Entity::find_by_game_id_and_session_id_with_progress(Uuid::from_str(&game_bet_res_model.game_id).unwrap(),
+                                game_bet_res_model.session_id.clone() , GameBetStatus::InProgress.to_string()).limit(2000).all(&postgres_conn).await
+                            };
                       
                         if game_bets.is_err() {
                             error!("Error while fetching GameBets")
@@ -330,8 +336,17 @@ pub async fn do_listen(
 
 
                         let mut game_bets = if game_over_event_model.is_game_valid {
-                            game_bets::Entity::find_by_game_id_and_session_id_with_progress_not_equal_to_winner_id(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
-                        game_over_event_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).all(&postgres_conn).await
+                            // there are two possible cases
+                            // winner_id not empty -> which means the game was completed with a winner
+                            if !game_over_event_model.winner_id.is_empty() {
+                                game_bets::Entity::find_by_game_id_and_session_id_with_progress_not_equal_to_winner_id(Uuid::from_str(&game_over_event_model.game_id).unwrap(),
+                                game_over_event_model.session_id.clone() , GameBetStatus::InProgress.to_string() , Uuid::parse_str(&game_over_event_model.winner_id).unwrap()).all(&postgres_conn).await
+                            } else {
+                                //  if winner_id is empty it means their was a stalemate
+                                // in this cases game is valid but all bets become invalid as there was no clear winner
+                               Ok(vec![])
+                            }
+                           
                   
                         } else {
                             // If not valid only player with issue must be settle rest should be compensated
