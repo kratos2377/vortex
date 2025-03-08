@@ -8,7 +8,7 @@ use mongodb::bson::{self, doc};
 use orion::{ constants::{CHESS_STATE_REDIS_KEY, CREATE_NEW_GAME_RECORD, CREATE_USER_BET, USER_GAME_DELETION, USER_GAME_EVENTS, USER_SCORE_UPDATE}, events::kafka_event::{CreateNewGamePayloadEvent, GameBetEvent, UserGameBetEvent, UserGameDeletetionEvent}, models::{chess_events::{CellPosition, ChessNormalEvent, ChessPromotionEvent}, game_bet_events::GameBetStatus, game_model::Game, user_game_event::UserGameMove, user_game_relation_model::UserGameRelation, user_score_update_event::UserScoreUpdateEvent, user_turn_model::UserTurnMapping}};
 use rdkafka::{consumer::StreamConsumer, Message};
 use redis::{AsyncCommands, RedisResult};
-use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, QueryFilter, Set, Value};
+use sea_orm::{prelude::Expr, ActiveValue, ColIdx, Database, EntityTrait, IntoSimpleExpr, QueryFilter, Set, Value};
 use tokio::{spawn, task::JoinHandle};
 use tracing::{info, warn};
 use ton::models::{self, game, game_bets, users};
@@ -220,7 +220,8 @@ pub async fn do_listen(
 
                     if user_score_update_event_payload.is_ok() {
                         let user_score_model_res: UserScoreUpdateEvent = user_score_update_event_payload.unwrap();
-                        let _ = users::Entity::update_many().col_expr(users::Column::Score, Expr::val(user_score_model_res.score).into())
+
+                        let _ = users::Entity::update_many().col_expr(users::Column::Score, Expr::cust_with_values("GREATEST(0, score + $1)", [user_score_model_res.score]))
                                 .filter(users::Column::Id.eq(Uuid::from_str(&user_score_model_res.user_id).unwrap()))
                                 .exec(&postgres_conn)
                                 .await;
