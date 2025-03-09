@@ -54,3 +54,15 @@ kafka:
       - id: game
         topic_name: game
         partitions: 2
+
+
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: cerotis
+        level: info
+      - namespace: cerotis::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug

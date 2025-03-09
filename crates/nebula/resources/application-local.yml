@@ -64,3 +64,15 @@ kafka:
       - id: game_bet_settled_error
         topic_name: game_bet_settled_error
         partitions: 2
+
+
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: nebula
+        level: info
+      - namespace: nebula::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug

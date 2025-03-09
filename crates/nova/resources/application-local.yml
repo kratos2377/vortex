@@ -15,3 +15,14 @@ kafka:
       - id: generate_game_bet_events
         topic_name: generate_game_bet_events
         partitions: 2
+
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: nova
+        level: info
+      - namespace: nova::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug

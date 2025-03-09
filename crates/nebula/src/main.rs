@@ -5,7 +5,7 @@ use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
 use kafka::producer;
-use orion::{constants::{CREATE_USER_BET, EXECUTOR_GAME_OVER_EVENT, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_OVER_STATUS_KEY, GAME_STAKE_TIME_OVER, GAME_STAKE_TIME_OVER_DATA, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, SETTLE_BET_KEY_DATA, STAKE_TIME_OVER, STAKE_TIME_OVER_RESULT, START_GAME_SETTLE_EVENT}, events::kafka_event::{ExecutorGameOverEvent, GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStakeTimeOverEventResult, GameStakeTimeRedisPayload, GameStatusChangeEvent, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
+use orion::{constants::{CREATE_USER_BET, GAME_BET_SETTLED, GAME_BET_SETTLED_ERROR, GAME_OVER_EVENT, GAME_STAKE_TIME_OVER, GAME_STAKE_TIME_OVER_DATA, GENERATE_GAME_BET_EVENTS, SETTLE_BET_KEY, SETTLE_BET_KEY_DATA, STAKE_TIME_OVER, STAKE_TIME_OVER_RESULT, START_GAME_SETTLE_EVENT}, events::kafka_event::{GameBetEvent, GameBetSettleKafkaPayload, GameOverEvent, GameSettleBetErrorRedisPayload, GameStakeTimeOverEventResult, GameStakeTimeRedisPayload, GameUserBetSettleEvent, GenerateGameBetSettleEvents, UserGameBetEvent}, models::game_bet_events::GameBetStatus};
 use rdkafka::{consumer::StreamConsumer, error::KafkaError, message::ToBytes, producer::{FutureProducer, FutureRecord, Producer}, util::Timeout, Message};
 use redis::{AsyncCommands, RedisResult, SetOptions, ToRedisArgs};
 use reqwest::Client;
@@ -239,7 +239,7 @@ pub async fn do_listen(
                             };
                       
                         if game_bets.is_err() {
-                            error!("Error while fetching GameBets")
+                            error!("Error while fetching GameBets: {:?}" , game_bets.unwrap_err())
                         } else {
                             let game_bets_vec = game_bets.unwrap();
                             
@@ -326,7 +326,7 @@ pub async fn do_listen(
                     let game_over_event_payload = serde_json::from_str(&payload);
 
                     if game_over_event_payload.is_err() {
-                        error!("Error Occured while parsing GameOverEvent");
+                        error!("Error Occured while parsing GameOverEvent: {:?}" , game_over_event_payload.err());
                     } else {
                         let game_over_event_model: GameOverEvent = game_over_event_payload.unwrap();
 
@@ -549,7 +549,7 @@ pub async fn do_listen(
                             println!("UserGameBetEvent generated");
                             let res = new_bet.insert(&postgres_conn).await;
                             if res.is_err() {
-                                println!("Error while inserting payloading");
+                                println!("Error while inserting payload");
                                 println!("{:?}" , res.err().unwrap());
                             }
                         } else {
@@ -652,6 +652,10 @@ pub async fn do_listen(
                         .await;
                     let redis_rsp: RedisResult<()> =  redis_conn.del(GAME_STAKE_TIME_OVER_DATA.to_string() + &game_stake_time_result_event_record.game_id + "_" + &game_stake_time_result_event_record.session_id).await;
                 
+                    
+                    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                    let redis_rsp_settle_bet_event: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_stake_time_result_event_record.game_id + "_" + &game_stake_time_result_event_record.session_id, "settle-bet-event",opts).await;
+
                         println!("GameStakeTimeOver Event Settled");
                      }
                     } else {
