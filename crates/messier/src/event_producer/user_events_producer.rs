@@ -17,9 +17,6 @@ pub async fn send_event_for_user_topic(
         FRIEND_REQUEST_EVENT => {
             create_friend_request_event(context , payload).await
         },
-        GAME_INVITE_EVENT => {
-            create_game_invite_event(context , payload).await
-        },
 
         _ => {vec![]}
 
@@ -68,17 +65,6 @@ pub async fn create_friend_request_event(context: &DynContext, payload: String) 
         topic: "user".to_string(),
         payload: payload,
         key: "friend-request-event".to_string(),
-    };
-    let results_resp: Vec<KafkaGeneralEvent> = vec![kafka_general_event];
-    return results_resp
-}
-
-
-pub async fn create_game_invite_event(context: &DynContext, payload: String) -> Vec<KafkaGeneralEvent> {
-    let kafka_general_event = KafkaGeneralEvent {
-        topic: "user".to_string(),
-        payload: payload,
-        key: "game-invite-event".to_string(),
     };
     let results_resp: Vec<KafkaGeneralEvent> = vec![kafka_general_event];
     return results_resp
