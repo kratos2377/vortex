@@ -290,7 +290,7 @@ pub async fn do_listen(
     
                                 let mut redis_conn = context.get_redis_connection();
     
-                                let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                                let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(90));
                                 let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                            
                             } else {
@@ -310,7 +310,7 @@ pub async fn do_listen(
 
                             let mut redis_conn = context.get_redis_connection();
 
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(90));
                             let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_bet_res_model.game_id + "_" + &game_bet_res_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                         }
                   
@@ -419,7 +419,7 @@ pub async fn do_listen(
                         // If stake is false it means stake over status change transaction already happen we can start with bet settle events
 
 
-                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                        let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(90));
                      
                         let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, "game-over-event" ,opts).await;
                    
@@ -514,7 +514,7 @@ pub async fn do_listen(
                             };
 
 
-                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                            let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(90));
                             let redis_rsp: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_over_event_model.game_id + "_" + &game_over_event_model.session_id, serde_json::to_string(&redis_payload).unwrap() ,opts).await;
                         }
                     }
@@ -653,7 +653,7 @@ pub async fn do_listen(
                     let redis_rsp: RedisResult<()> =  redis_conn.del(GAME_STAKE_TIME_OVER_DATA.to_string() + &game_stake_time_result_event_record.game_id + "_" + &game_stake_time_result_event_record.session_id).await;
                 
                     
-                    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+                    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(90));
                     let redis_rsp_settle_bet_event: RedisResult<()> =  redis_conn.set_options(SETTLE_BET_KEY.to_string() + &game_stake_time_result_event_record.game_id + "_" + &game_stake_time_result_event_record.session_id, "settle-bet-event",opts).await;
 
                         println!("GameStakeTimeOver Event Settled");

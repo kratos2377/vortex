@@ -219,7 +219,7 @@ pub async fn send_email(
     let rand_code = utils::generate_random_string::generate_random_string(6);
     let mut redis_connection  = state.context.get_redis_db_client();
 
-    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(900));
+    let opts = SetOptions::default().with_expiration(redis::SetExpiry::EX(90));
    let redis_rsp: RedisResult<()> =  redis_connection.set_options(payload.id.clone() + "-email-key", rand_code.clone(), opts).await;
 
 
