@@ -64,7 +64,15 @@ pub async fn verify_token(
              "success": true
          },
  
-         "user_data":  user_model
+         "user_data":  ResponseUser {
+            id: user_model.id,
+            first_name: user_model.first_name,
+            last_name: user_model.last_name,
+            username: user_model.username,
+            score: user_model.score,
+            verified: user_model.verified,
+            email: user_model.email
+        },
      }));
  
      Ok(body)
@@ -78,32 +86,43 @@ pub async fn login_user(
 	payload: Json<LoginPayload>,
 ) -> Result<Json<Value>> {
     if payload.usernameoremail == "" || payload.pwd == "" {
+        println!("ERROR OCCURED FROM MISSING PARAMS");
+        println!("{:?}" , payload);
        return Err(Error::MissingParamsError)
     }
+
+    println!("REACHED HERE 1");
 
     let user_found;
     if payload.usernameoremail.contains("@") {
         info!("Searching user using email for email={}" , payload.usernameoremail);
+        println!("REACHED HERE 2");
       let user = Users::find_by_email(&payload.usernameoremail).one(&state.conn).await.unwrap();
 
       if let Some(user) = user {
+        println!("REACHED HERE 3");
             user_found = user.clone()
       } else {
+        println!("REACHED HERE 4");
         return Err(Error::EntityNotFound)
       }
     } else {
         info!("Searching user using username for username={}" , payload.usernameoremail);
+        println!("REACHED HERE 5");
         let user = Users::find_by_username(&payload.usernameoremail).one(&state.conn).await.unwrap();
 
         if let Some(user) = user {
+            println!("REACHED HERE 6");
               user_found = user.clone()
         } else {
+            println!("REACHED HERE 7");
           return Err(Error::EntityNotFound)
         }
     }
 
     if !verify_password(user_found.password , payload.pwd.clone()) {
         info!("Invalid password for usernameoremail={}" , payload.usernameoremail);
+        println!("REACHED HERE 8");
         return Err(Error::PasswordIncorrect)
     }
 
@@ -112,10 +131,13 @@ pub async fn login_user(
 	// cookie.set_path("/");
 	// cookies.add(cookie);
 
+    println!("REACHED HERE 9");
     let generated_jwt_token = encode_jwt(user_found.id.to_string())
     .map_err(|_| APIError { message: "Failed while Creating JWT token".to_owned(), status_code: StatusCode::UNAUTHORIZED, error_code: Some(41) }).unwrap();
 
+    println!("REACHED HERE 10");
     info!("Verified credentials for usernameoremail={}" , payload.usernameoremail);
+    println!("REACHED HERE 11");
     let body = Json(json!({
 		"result": {
 			"success": true
@@ -132,7 +154,7 @@ pub async fn login_user(
             email: user_found.email
         },
 	}));
-
+    println!("REACHED HERE 12");
 	Ok(body)
                                                                                                                      
 }
