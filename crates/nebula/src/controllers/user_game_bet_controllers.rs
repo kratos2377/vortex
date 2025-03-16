@@ -35,12 +35,14 @@ if game_bets_vec.is_err() {
     return Err(Error::ErrorWhileFetchingUserBets)
 }
 
+let game_bet_vec_rec = game_bets_vec.unwrap();
 
 let body = Json(json!({
     "result": {
         "success": true
     },
-    "game_bets": game_bets_vec.unwrap()
+    "game_bets": game_bet_vec_rec,
+    "has_more": game_bet_vec_rec.len() == 20
 }));
 
 Ok(body)
