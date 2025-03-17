@@ -27,11 +27,13 @@ deps() {
     crates/migration/src \
     crates/orion/src \
     crates/nebula/src \
+    crates/nova/src \
     crates/ton/src 
   echo 'fn main() { panic!("stub"); }' |
     tee crates/cerotis/src/main.rs |
     tee crates/messier/src/main.rs
     tee crates/nebula/src/main.rs
+    tee crates/nova/src/main.rs
   echo '' |
     tee crates/migration/src/lib.rs |
     tee crates/orion/src/lib.rs |
@@ -51,6 +53,7 @@ apps() {
     crates/migration/src/lib.rs \
     crates/orion/src/lib.rs \
     crates/nebula/src/main.rs \
+    crates/nova/src/main.rs \
     crates/ton/src/lib.rs 
   
   if [ -z "$TARGETARCH" ]; then

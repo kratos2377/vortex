@@ -8,9 +8,10 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     && rm -rf /var/lib/apt/lists/*
-
+z
 # Copy dependency specifications
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
+COPY ../Cargo.lock ./
 
 # Create dummy source files to cache dependencies
 RUN mkdir -p src/resources && \
