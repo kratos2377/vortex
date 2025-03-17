@@ -13,6 +13,6 @@ echo "Building images, will tag for ghcr.io with $TAG-debug!"
 docker build -t ghcr.io/kratos2377/base:latest -f Dockerfile.useCurrentArch .
 docker build -t ghcr.io/kratos2377/cerotis:$TAG - < crates/cerotis/Dockerfile
 docker build -t ghcr.io/kratos2377/messier:$TAG - < crates/messier/Dockerfile
-docker build -t ghcr.io/kratos2377/saggitarius:$TAG - < crates/saggitarius/Dockerfile
+docker build -t ghcr.io/kratos2377/nebula:$TAG - < crates/nebula/Dockerfile
 
 git restore Cargo.toml

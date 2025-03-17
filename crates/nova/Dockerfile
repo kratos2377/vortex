@@ -28,7 +28,7 @@ COPY resources ./resources
 RUN touch src/main.rs
 
 # Build actual application
-RUN cargo build --release --bin cerotis
+RUN cargo build --release --bin nova
 
 # Runtime stage
 FROM debian:bullseye-slim
@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy built binary from builder
-COPY --from=builder /app/target/release/cerotis /app/cerotis
+COPY --from=builder /app/target/release/nova /app/nova
 
 # Copy configuration files
 COPY --from=builder /app/resources /app/resources
@@ -51,7 +51,7 @@ ENV CONFIG_PATH=/app/resources/application.yml
 ENV RUST_LOG=info
 
 # Expose the port your Axum application listens on
-EXPOSE 3005
+EXPOSE 3025
 
 # Run the application
-ENTRYPOINT ["/app/cerotis"]
+ENTRYPOINT ["/app/nova"]
