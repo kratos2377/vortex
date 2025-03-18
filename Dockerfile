@@ -1,4 +1,3 @@
-# Build Stage
 FROM --platform="${BUILDPLATFORM}" rust:1.77.2-slim-bookworm
 USER 0:0
 WORKDIR /home/rust/src
@@ -25,9 +24,11 @@ COPY crates/migration/Cargo.toml ./crates/migration/
 COPY crates/orion/Cargo.toml ./crates/orion/
 COPY crates/ton/Cargo.toml ./crates/ton/
 COPY crates/common-tracing/Cargo.toml ./crates/common-tracing/
-
 RUN sh /tmp/build-image-layer.sh deps
 
 # Build all apps
+
+
 COPY crates ./crates
+
 RUN sh /tmp/build-image-layer.sh apps
