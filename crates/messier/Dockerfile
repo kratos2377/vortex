@@ -1,57 +1,13 @@
-# Build stage
-FROM rust:1.73-slim-bullseye as builder
+# Build Stage
+FROM ghcr.io/revoltchat/base:latest AS builder
+FROM debian:12 AS debian
 
-WORKDIR /app
+# Bundle Stage
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=builder /home/rust/src/target/release/messier ./
+COPY --from=debian /usr/bin/uname /usr/bin/uname
 
-# Install required system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy dependency specifications
-COPY Cargo.toml Cargo.lock ./
-
-# Create dummy source files to cache dependencies
-RUN mkdir -p src/resources && \
-    echo "fn main() {}" > src/main.rs && \
-    echo "" > src/lib.rs
-
-# Build dependencies (cached unless Cargo.toml/Cargo.lock change)
-RUN cargo build --release
-
-# Copy actual source code
-COPY src ./src
-COPY resources ./resources
-
-# Touch main.rs to force rebuild
-RUN touch src/main.rs
-
-# Build actual application
-RUN cargo build --release --bin messier
-
-# Runtime stage
-FROM debian:bullseye-slim
-
-RUN apt-get update && apt-get install -y \
-    openssl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy built binary from builder
-COPY --from=builder /app/target/release/messier /app/messier
-
-# Copy configuration files
-COPY --from=builder /app/resources /app/resources
-
-# Set environment variables for config-rs
-ENV CONFIG_PATH=/app/resources/application.yml
-ENV RUST_LOG=info
-
-# Expose the port your Axum application listens on
 EXPOSE 3004
-
-# Run the application
-ENTRYPOINT ["/app/messier"]
+ENV ROCKET_ADDRESS=0.0.0.0
+USER nonroot
+CMD ["./messier"]
