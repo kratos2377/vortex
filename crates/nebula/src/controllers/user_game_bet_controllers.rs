@@ -28,10 +28,8 @@ pub async fn get_user_bets(
     state: State<AppDBState>
 ) -> APIResult<Json<Value>> {
 
-    println!("COMING TILL HERE");
 
     if params.user_id == "" || params.wallet_key == "" {
-        println!("MISSING PARAMS ERROR");
         return Err(Error::MissingParams)
     }
     
@@ -43,7 +41,6 @@ pub async fn get_user_bets(
         .await;
     
     if game_bets_vec.is_err() {
-        println!("Error while fetching bets");
         return Err(Error::ErrorWhileFetchingUserBets)
     }
     
