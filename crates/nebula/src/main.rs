@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 
-use axum::Router;
+use axum::{response::IntoResponse, routing::get, Router};
 use chrono::Utc;
 use conf::{config_types::ServerConfiguration, configuration::Configuration};
 use context::context::{ContextImpl, DynContext};
@@ -12,6 +12,7 @@ use reqwest::Client;
 use sea_orm::{ColumnTrait, DbErr};
 use sea_orm::{prelude::Expr, Condition};
 use sea_orm::{Database, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait};
+use serde_json::json;
 use state::AppDBState;
 use sea_orm::ActiveModelTrait;
 use tokio::{spawn, task::JoinHandle};
@@ -97,6 +98,7 @@ async fn start_web_server(
 
     let user_game_bet_routes = routes::user_game_bet_routes::create_user_game_bet_routes() ;
     let routes_all = Router::new()
+                        .route( "/api/v1/health", get(health))
                             .nest( "/api/v1/game_bets", user_game_bet_routes)
                             .layer(ServiceBuilder::new()
                                     .layer(CookieManagerLayer::new())
@@ -114,6 +116,10 @@ async fn start_web_server(
         // Shutdown tracing provider
 }
 
+pub async fn health() -> impl IntoResponse {
+    axum::Json(json!({ "Nebula status" : "UP" }))
+  }
+  
 
 pub async fn shutdown_signal(shutdown_handles: Vec<JoinHandle<()>>) {
     let ctrl_c = async {

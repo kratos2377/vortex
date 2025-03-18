@@ -78,7 +78,7 @@ async fn start_web_server(
 
 
 pub async fn health() -> impl IntoResponse {
-    axum::Json(json!({ "status" : "UP" }))
+    axum::Json(json!({ "Nova status" : "UP" }))
 }
 
 

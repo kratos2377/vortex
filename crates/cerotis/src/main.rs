@@ -111,7 +111,8 @@ pub async fn shutdown_signal(shutdown_handles: Vec<JoinHandle<()>>) {
 
 
 fn init_routing() -> Router {
-    let base_router = Router::new().route("/health", get(health));
+    
+    let base_router = Router::new().route("/api/v1/health", get(health));
 
     return base_router;
 

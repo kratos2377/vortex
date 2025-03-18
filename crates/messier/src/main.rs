@@ -1,8 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use axum::{handler::Handler, Router};
+use axum::{handler::Handler, response::IntoResponse, routing::get, Router};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
+use serde_json::json;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
@@ -58,6 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let user_logic_routes = routes::user_logic_routes::create_user_logic_routes();
    // let game_routes = routes::game_logic_routes::create_game_routes();
     let routes_all = Router::new()
+                          .route( "/api/v1/health", get(health))
                             .nest( "/api/v1/auth", user_auth_routes)
                             .nest("/api/v1/user", user_logic_routes)
                          //   .nest( "/api/v1/game", game_routes)
@@ -76,4 +78,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
+}
+
+
+pub async fn health() -> impl IntoResponse {
+  axum::Json(json!({ "Messier status" : "UP" }))
 }

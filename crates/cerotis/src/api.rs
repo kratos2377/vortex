@@ -6,5 +6,5 @@ use serde_json::json;
 pub static SERVER_PORT: AtomicU16 = AtomicU16::new(0);
 
 pub async fn health() -> impl IntoResponse {
-    axum::Json(json!({ "status" : "UP" }))
+    axum::Json(json!({ "Cerotis status" : "UP" }))
 }
