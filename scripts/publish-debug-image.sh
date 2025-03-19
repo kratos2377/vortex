@@ -18,11 +18,11 @@ if [ "$DEBUG" = "true" ]; then
   echo "debug = true" >> Cargo.toml
 fi
 
-TAG=$1-debug
-echo "Building images, will tag for ghcr.io with $TAG-debug!"
+TAG=$1-version
+echo "Building images, will tag for ghcr.io with tag $TAG!"
 docker build -t ghcr.io/kratos2377/base:latest -f Dockerfile.useCurrentArch .
-docker build -t ghcr.io/kratos2377/cerotis:$TAG - < crates/cerotis/Dockerfile
 docker build -t ghcr.io/kratos2377/messier:$TAG - < crates/messier/Dockerfile
+docker build -t ghcr.io/kratos2377/cerotis:$TAG - < crates/cerotis/Dockerfile
 docker build -t ghcr.io/kratos2377/nebula:$TAG - < crates/nebula/Dockerfile
 docker build -t ghcr.io/kratos2377/nova:$TAG - < crates/nova/Dockerfile
 

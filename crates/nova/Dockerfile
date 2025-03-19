@@ -8,6 +8,5 @@ COPY --from=builder /home/rust/src/target/release/nova ./
 COPY --from=debian /usr/bin/uname /usr/bin/uname
 
 EXPOSE 3025
-ENV ROCKET_ADDRESS=0.0.0.0
 USER nonroot
 CMD ["./nova"]

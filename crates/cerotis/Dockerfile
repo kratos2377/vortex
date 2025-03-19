@@ -8,6 +8,5 @@ COPY --from=builder /home/rust/src/target/release/cerotis ./
 COPY --from=debian /usr/bin/uname /usr/bin/uname
 
 EXPOSE 3005
-ENV ROCKET_ADDRESS=0.0.0.0
 USER nonroot
 CMD ["./cerotis"]
